@@ -306,33 +306,43 @@ const sspDialogBtn = (primary) => ({
 function ShareToStoryDemo() {
   const tap = useHaptic();
   const [busy, setBusy] = React.useState(false);
+  const [hint, setHint] = React.useState(null);
 
   const openStoryComposer = async () => {
     tap('success');
-    if (!window.API || !window.API.isReady()) return;
+    setHint(null);
+    const tg = window.Telegram && window.Telegram.WebApp;
+    const supports = tg && typeof tg.shareToStory === 'function' &&
+                     (!tg.isVersionAtLeast || tg.isVersionAtLeast('7.8'));
     setBusy(true);
     try {
-      const res = await window.API.fetch('/api/share/story', {
-        method: 'POST',
-        body: JSON.stringify({ template: 'collectible', preset: 'bloom' }),
-      });
-      // poll for completion (500ms x 12)
-      let info = res;
-      for (let i = 0; i < 12 && info.status !== 'done'; i++) {
-        await new Promise((r) => setTimeout(r, 500));
-        info = await window.API.fetch('/api/share/story/' + res.task_id);
+      let imageUrl = null;
+      if (window.API && window.API.isReady()) {
+        const res = await window.API.fetch('/api/share/story', {
+          method: 'POST',
+          body: JSON.stringify({ template: 'collectible', preset: 'bloom' }),
+        });
+        let info = res;
+        for (let i = 0; i < 12 && info.status !== 'done'; i++) {
+          await new Promise((r) => setTimeout(r, 500));
+          info = await window.API.fetch('/api/share/story/' + res.task_id);
+        }
+        imageUrl = info.url || null;
       }
-      const tg = window.Telegram && window.Telegram.WebApp;
-      if (tg && typeof tg.shareToStory === 'function' && info.url) {
-        tg.shareToStory(info.url, {
+      if (supports && imageUrl) {
+        tg.shareToStory(imageUrl, {
           text: 'Built with the API Showcase ✨',
           widget_link: { url: 'https://t.me/APIShowcaseBot', name: 'Open showcase' },
         });
-      } else if (info.url) {
-        window.open(info.url, '_blank', 'noopener');
+      } else if (!supports) {
+        setHint('Story sharing needs Telegram 10.5+. Try on a newer client.');
+      } else {
+        setHint('Backend not reachable — story image could not be generated.');
       }
-    } catch (e) { console.warn('story', e); }
-    finally { setBusy(false); }
+    } catch (e) {
+      console.warn('story', e);
+      setHint('Story render failed. Check the backend logs.');
+    } finally { setBusy(false); }
   };
 
   return (
@@ -387,6 +397,15 @@ function ShareToStoryDemo() {
         }}>via @APIShowcaseBot</div>
       </div>
 
+      {hint && (
+        <div style={{
+          marginTop: 8, padding: '8px 12px', borderRadius: 10,
+          background: 'color-mix(in oklch, oklch(0.78 0.18 50) 14%, transparent)',
+          color: 'oklch(0.42 0.14 50)',
+          fontFamily: '-apple-system, system-ui', fontSize: 12,
+        }}>{hint}</div>
+      )}
+
       <MainButton label={busy ? "Rendering…" : "Open Story composer"} haptic="soft" loading={busy} onClick={openStoryComposer}/>
     </div>
   );
@@ -409,6 +428,24 @@ function ShareMessageDemo() {
     tap('success', e); setSent(id); setOpen(false);
     window.tgLog && window.tgLog('prepared_message_sent', { peer_id: id });
     setTimeout(() => setSent(null), 2000);
+  };
+  // Try the native send-to sheet (Bot API 8.0) when the bot prepared a
+  // message id; otherwise fall back to our in-app mock sheet.
+  const openSheet = async (e) => {
+    tap('soft', e);
+    const tg = window.Telegram && window.Telegram.WebApp;
+    if (tg && typeof tg.shareMessage === 'function') {
+      try {
+        const prepared = window.__SHARE_PREPARED_ID__ || (window.API && window.API.state && window.API.state.preparedMessageId);
+        if (prepared) {
+          tg.shareMessage(prepared, (ok) => {
+            if (ok) { setSent('lina'); setTimeout(() => setSent(null), 2000); }
+          });
+          return;
+        }
+      } catch (_) { /* fall through */ }
+    }
+    setOpen(true);
   };
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>
@@ -502,7 +539,7 @@ function ShareMessageDemo() {
         </div>
       )}
 
-      <MainButton label="Open send-to sheet" haptic="soft" onClick={(e) => { tap('soft', e); setOpen(true); }}/>
+      <MainButton label="Open send-to sheet" haptic="soft" onClick={openSheet}/>
     </div>
   );
 }
@@ -689,7 +726,19 @@ function EmojiStatusDemo() {
   const [pick, setPick] = React.useState('🔥');
   const [active, setActive] = React.useState(null);
   const choices = ['🔥', '✨', '🎁', '🌹', '👑', '🦄', '🧊', '☘️'];
-  const setStatus = (e) => { tap('success', e); setActive({ emoji: pick, until: Date.now() + 3600000 }); };
+  const setStatus = (e) => {
+    tap('success', e);
+    setActive({ emoji: pick, until: Date.now() + 3600000 });
+    // Nudge the real native flow when the SDK exposes it (Bot API 8.0+).
+    // We don't have a custom_emoji_id for these unicode glyphs, so we just
+    // request access — the user can then pick a status from their library.
+    const tg = window.Telegram && window.Telegram.WebApp;
+    try {
+      if (tg && typeof tg.requestEmojiStatusAccess === 'function') {
+        tg.requestEmojiStatusAccess(() => {});
+      }
+    } catch (_) { /* ignored */ }
+  };
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>
       <div style={{
@@ -759,6 +808,22 @@ function EmojiStatusDemo() {
 
 // ─── 8. Premium promo — open the upgrade page ───────────────────────────
 function PremiumPromoDemo() {
+  const tap = useHaptic();
+  const openPromo = (e) => {
+    tap('soft', e);
+    const tg = window.Telegram && window.Telegram.WebApp;
+    try {
+      if (tg && typeof tg.openTelegramLink === 'function') {
+        tg.openTelegramLink('https://t.me/premiumbot');
+        return;
+      }
+      if (tg && typeof tg.openLink === 'function') {
+        tg.openLink('https://telegram.org/premium');
+        return;
+      }
+    } catch (_) { /* ignored */ }
+    window.open('https://t.me/premiumbot', '_blank', 'noopener');
+  };
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>
       <div style={{
@@ -816,8 +881,7 @@ function PremiumPromoDemo() {
            custom emoji statuses, and a few hundred more touches.</div>
       </div>
 
-      <MainButton label="Open Premium promo" haptic="soft"
-                  onClick={() => {}}/>
+      <MainButton label="Open Premium promo" haptic="soft" onClick={openPromo}/>
     </div>
   );
 }
