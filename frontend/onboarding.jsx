@@ -43,10 +43,15 @@ function Onboarding({ userName = 'Alex', onDone, motionDensity = 'regular' }) {
       color: 'var(--tg-text)',
       overflow: 'hidden',
     }}>
-      {/* logo — bitmap mark, no glow ring */}
+      {/* logo — bitmap mark, breathing scale only (no white inset ring) */}
+      <style>{`@keyframes tg-logo-breathe {
+        0%, 100% { transform: scale(1); }
+        50%      { transform: scale(1.025); }
+      }`}</style>
       <div style={{
         marginTop: 8, position: 'relative',
         width: 112, height: 112,
+        animation: logoBeat ? 'tg-logo-breathe 2.4s cubic-bezier(.4,.0,.2,1) infinite' : 'none',
       }}>
         <img
           src="uploads/new_logo_swap_to_this_and_set_the_size_if_needed.png"
