@@ -43,29 +43,46 @@ function Onboarding({ userName = 'Alex', onDone, motionDensity = 'regular' }) {
       color: 'var(--tg-text)',
       overflow: 'hidden',
     }}>
-      {/* logo */}
+      {/* logo — grunge ink-splash circle with a bold "2", transparent backdrop */}
       <div style={{
         marginTop: 8, position: 'relative',
-        width: 96, height: 96,
+        width: 112, height: 112,
+        animation: logoBeat ? 'tg-pulse 2.4s cubic-bezier(.4,.0,.2,1) infinite' : 'none',
       }}>
-        <div style={{
-          position: 'absolute', inset: 0,
-          borderRadius: 28,
-          background: 'linear-gradient(135deg, var(--tg-accent), color-mix(in oklch, var(--tg-accent) 60%, white))',
-          boxShadow: '0 18px 40px color-mix(in oklch, var(--tg-accent) 40%, transparent), inset 0 1px 0 rgba(255,255,255,0.4)',
-          animation: logoBeat ? 'tg-pulse 2.4s cubic-bezier(.4,.0,.2,1) infinite' : 'none',
-        }} />
-        {/* nested mini-app icon: a soft ribbon */}
-        <svg viewBox="0 0 96 96" style={{ position: 'absolute', inset: 0 }}>
+        <svg viewBox="0 0 120 120" style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
           <defs>
-            <linearGradient id="ribbon" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="rgba(255,255,255,0.9)"/>
-              <stop offset="1" stopColor="rgba(255,255,255,0.55)"/>
-            </linearGradient>
+            <filter id="ink-grunge" x="-20%" y="-20%" width="140%" height="140%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7"/>
+              <feDisplacementMap in="SourceGraphic" scale="5"/>
+            </filter>
+            <filter id="ink-edge" x="-20%" y="-20%" width="140%" height="140%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="3" seed="3"/>
+              <feDisplacementMap in="SourceGraphic" scale="9"/>
+            </filter>
           </defs>
-          <path d="M22 60c14-26 38-26 52 0M22 60c14 12 38 12 52 0"
-                stroke="url(#ribbon)" strokeWidth="6" fill="none" strokeLinecap="round"/>
-          <circle cx="48" cy="32" r="6" fill="rgba(255,255,255,0.95)"/>
+          {/* outer rough ring + ink blot, displaced for an inky edge */}
+          <g filter="url(#ink-edge)">
+            <circle cx="60" cy="60" r="46" fill="#0a0a0a"/>
+            {/* drips */}
+            <ellipse cx="46" cy="106" rx="3" ry="9" fill="#0a0a0a"/>
+            <ellipse cx="74" cy="108" rx="2.4" ry="7" fill="#0a0a0a"/>
+            <circle cx="46" cy="114" r="2.2" fill="#0a0a0a"/>
+            {/* splatter dots */}
+            <circle cx="14" cy="40" r="2" fill="#0a0a0a"/>
+            <circle cx="108" cy="32" r="1.6" fill="#0a0a0a"/>
+            <circle cx="106" cy="78" r="2.2" fill="#0a0a0a"/>
+            <circle cx="20" cy="84" r="1.4" fill="#0a0a0a"/>
+          </g>
+          {/* the "2" — bold, slightly grungy */}
+          <g filter="url(#ink-grunge)">
+            <text x="60" y="84"
+                  textAnchor="middle"
+                  fontFamily='Impact, "Anton", "Oswald", Haettenschweiler, "Arial Narrow Bold", system-ui, sans-serif'
+                  fontSize="78"
+                  fontWeight="900"
+                  fill="#ffffff"
+                  letterSpacing="-2">2</text>
+          </g>
         </svg>
       </div>
 
