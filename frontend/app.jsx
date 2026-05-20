@@ -71,6 +71,7 @@ function App() {
       setProgress((p) => Math.min(TOTAL_DEMOS, p + 1));
     }
     window.tgLog && window.tgLog('mainButton_clicked', { card: card.id });
+    window.API && window.API.track && window.API.track('card_opened', { card_id: card.id, title: card.title });
   };
 
   const backToGallery = () => {

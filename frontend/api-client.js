@@ -143,6 +143,19 @@
       state.readyResolvers.forEach((r) => r());
       state.readyResolvers = [];
       emit('ready', { user: state.user });
+      // Identify the verified Telegram user inside Umami so later events
+      // attach to a stable visitor. Safe no-op if the tracker hasn't loaded.
+      try {
+        if (window.umami && state.user) {
+          window.umami.identify(String(state.user.tg_id), {
+            first_name: state.user.first_name,
+            username: state.user.username,
+            is_premium: !!state.user.is_premium,
+            launch_mode: state.launchMode,
+          });
+          window.umami.track('app_ready', { launch_mode: state.launchMode });
+        }
+      } catch (e) {}
       console.log('[API] ready as', state.user && state.user.first_name, state.token ? '(token ok)' : '');
     } catch (e) {
       console.warn('[API] init failed, frontend stays in mock mode:', e);
@@ -163,6 +176,9 @@
     get launchMode() { return state.launchMode; },
     get online() { return state.online; },
     isReady: () => state.ready,
+    track(name, props) {
+      try { window.umami && window.umami.track(name, props || {}); } catch (e) {}
+    },
   };
 
   // Auto-init after DOM/scripts settle (Babel compiles asynchronously).
