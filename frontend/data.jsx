@@ -361,6 +361,22 @@ const LAUNCH_MODES = [
 ];
 const DEFAULT_LAUNCH_MODE = 'direct';
 
+// Best-effort guess of which entry point the user actually came in through,
+// based on what the SDK reports in initDataUnsafe.
+function detectLaunchMode() {
+  try {
+    const tg = window.Telegram && window.Telegram.WebApp;
+    const d = tg && tg.initDataUnsafe;
+    if (!d) return DEFAULT_LAUNCH_MODE;
+    if (d.query_id && d.chat_instance && !d.start_param) return 'inline-mode';
+    if (d.start_param && /^attach/i.test(String(d.start_param))) return 'attach';
+    if (d.start_param) return 'direct';
+    if (d.chat_type && d.chat_type !== 'sender') return 'inline-btn';
+    if (d.chat_instance) return 'menu';
+    return 'side';
+  } catch (_) { return DEFAULT_LAUNCH_MODE; }
+}
+
 // ─── Collectible Gift presets — patterns / backdrops / models (3 variants)
 const GIFT_PRESETS = {
   cosmic: {
@@ -399,5 +415,5 @@ const HAPTICS = {
 
 Object.assign(window, {
   THEMES, applyTheme, GLYPHS, Glyph, CatIcon, CATEGORIES, TOTAL_DEMOS, HAPTICS,
-  LAUNCH_MODES, DEFAULT_LAUNCH_MODE, GIFT_PRESETS,
+  LAUNCH_MODES, DEFAULT_LAUNCH_MODE, detectLaunchMode, GIFT_PRESETS,
 });

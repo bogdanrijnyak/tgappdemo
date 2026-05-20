@@ -31,9 +31,31 @@ function CustomMethodInspector() {
     try { parsedParams = JSON.parse(params || '{}'); setParamErr(null); }
     catch (err) { setParamErr(err.message); setBusy(false); return; }
     const t0 = performance.now();
+    const tg = window.Telegram && window.Telegram.WebApp;
+    // Try the real RPC bridge first; fall back to the mock response so the
+    // demo still renders something useful on desktop / older clients.
+    if (tg && typeof tg.invokeCustomMethod === 'function') {
+      try {
+        await new Promise((resolve) => {
+          tg.invokeCustomMethod(method, parsedParams, (err, result) => {
+            setLatency(Math.round(performance.now() - t0));
+            if (err) {
+              setResponse({ error: String(err.message || err) });
+            } else {
+              setResponse(result == null ? MOCK_RESPONSES[method] : result);
+            }
+            resolve();
+          });
+        });
+        setBusy(false);
+        tap('success');
+        return;
+      } catch (err) {
+        // fall through to mock
+      }
+    }
     await new Promise((r) => setTimeout(r, 280 + Math.random() * 240));
-    const t1 = performance.now();
-    setLatency(Math.round(t1 - t0));
+    setLatency(Math.round(performance.now() - t0));
     setResponse(MOCK_RESPONSES[method]);
     setBusy(false);
     tap('success');
@@ -323,7 +345,12 @@ function HideKeyboardDemo() {
         }}/>
       <div style={{ height: 12 }}/>
       <PressCard haptic="soft" disabled={!focused}
-        onPress={(e) => { tap('soft', e); inputRef.current && inputRef.current.blur(); }}
+        onPress={(e) => {
+          tap('soft', e);
+          const tg = window.Telegram && window.Telegram.WebApp;
+          try { if (tg && typeof tg.hideKeyboard === 'function') tg.hideKeyboard(); } catch (_) {}
+          inputRef.current && inputRef.current.blur();
+        }}
         style={{
           padding: '12px', borderRadius: 12,
           background: focused ? 'var(--tg-button)' : 'var(--tg-secondary-bg)',

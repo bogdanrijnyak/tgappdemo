@@ -366,7 +366,7 @@ function DemoBody({ demoId, card }) {
 // (LaunchModeBadge lives in the gallery greeting; this is the full demo view.)
 function LaunchModesDemo() {
   const tap = useHaptic();
-  const [activeId, setActiveId] = React.useState(DEFAULT_LAUNCH_MODE);
+  const [activeId, setActiveId] = React.useState(() => detectLaunchMode());
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>
       <div style={{
