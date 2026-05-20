@@ -43,14 +43,10 @@ function Onboarding({ userName = 'Alex', onDone, motionDensity = 'regular' }) {
       color: 'var(--tg-text)',
       overflow: 'hidden',
     }}>
-      {/* logo — bitmap mark with an orange glow ring */}
+      {/* logo — bitmap mark, no glow ring */}
       <div style={{
         marginTop: 8, position: 'relative',
         width: 112, height: 112,
-        borderRadius: '50%',
-        // local accent override so tg-pulse uses orange instead of the global blue
-        ['--tg-accent']: '#ff6a1a',
-        animation: logoBeat ? 'tg-pulse 2.4s cubic-bezier(.4,.0,.2,1) infinite' : 'none',
       }}>
         <img
           src="uploads/new_logo_swap_to_this_and_set_the_size_if_needed.png"
