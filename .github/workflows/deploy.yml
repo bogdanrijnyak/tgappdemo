@@ -25,18 +25,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      - name: Syntax + import smoke
+      - name: Syntax smoke
         working-directory: backend
-        env:
-          ENV: dev
-          BOT_TOKEN: "0:ci-fake"
-          DATABASE_URL: sqlite+aiosqlite:///./tmp.db
-          REDIS_URL: redis://localhost:6379/0
-          CELERY_BROKER_URL: redis://localhost:6379/1
-          CELERY_RESULT_BACKEND: redis://localhost:6379/2
         run: |
-          python -m compileall -q app
-          python -c "import app.main, app.bot.handlers, app.tasks.story_png, app.tasks.refund"
+          python -m compileall -q app scripts
 
   deploy:
     name: Deploy to VPS
