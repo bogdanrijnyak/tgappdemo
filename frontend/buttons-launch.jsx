@@ -951,24 +951,29 @@ function LocationDemo() {
 function LiveViewerDemo() {
   const [count, setCount] = React.useState((window.API && window.API.online) || 247);
   const [trend, setTrend] = React.useState(0);
+  // Always run the simulation; the moment a real presence message arrives we
+  // stop ticking the simulation so the WS feed wins. Previously the fallback
+  // never ran when window.API existed, so a quiet WS left the counter frozen.
   React.useEffect(() => {
-    if (window.API) {
-      const unsub = window.API.subscribe('presence', (msg) => {
+    const seen = { real: false };
+    let unsub = () => {};
+    if (window.API && typeof window.API.subscribe === 'function') {
+      unsub = window.API.subscribe('presence', (msg) => {
+        seen.real = true;
+        if (typeof msg.online !== 'number') return;
         setCount((c) => {
-          const next = msg.online;
-          setTrend(next - c);
-          return next;
+          setTrend(msg.online - c);
+          return msg.online;
         });
       });
-      return unsub;
     }
-    // Browser-only fallback while API offline
     const id = setInterval(() => {
+      if (seen.real) return;
       const delta = Math.floor(Math.random() * 9) - 3;
       setCount((c) => Math.max(80, c + delta));
       setTrend(delta);
     }, 1800);
-    return () => clearInterval(id);
+    return () => { unsub(); clearInterval(id); };
   }, []);
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>
