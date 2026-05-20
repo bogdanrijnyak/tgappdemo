@@ -1,0 +1,18 @@
+.env
+.env.local
+.env.*.local
+*.pyc
+__pycache__/
+.venv/
+venv/
+.idea/
+.vscode/
+.DS_Store
+nginx/letsencrypt/
+nginx/webroot/
+frontend_extracted/
+"Telegram Mini App _API Showcase_.zip"
+*.sqlite3
+node_modules/
+dist/
+build/
