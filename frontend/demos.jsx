@@ -545,10 +545,13 @@ function Axis({ label, value, min, max, onChange }) {
 
 function StarsPayment() {
   const tap = useHaptic();
-  const [stage, setStage] = React.useState('idle'); // 'idle' | 'invoice' | 'paying' | 'success'
+  const [stage, setStage] = React.useState('idle'); // 'idle' | 'invoice' | 'paying' | 'success' | 'refunded'
   const [refund, setRefund] = React.useState(60);
   const [particles, setParticles] = React.useState([]);
+  const lastPaymentRef = React.useRef(null);
 
+  // Drive the visible countdown; when it hits zero we call the backend's
+  // refund endpoint (which then refundStarPayment's via the bot API).
   React.useEffect(() => {
     if (stage !== 'success') return undefined;
     setRefund(60);
@@ -556,12 +559,32 @@ function StarsPayment() {
     return () => clearInterval(id);
   }, [stage]);
 
+  const doRefund = React.useCallback(async () => {
+    const id = lastPaymentRef.current;
+    if (!id) { setStage('idle'); return; }
+    if (window.API && window.API.isReady()) {
+      try {
+        await window.API.fetch('/api/stars/refund/' + id, { method: 'POST' });
+      } catch (e) { console.warn('refund', e); }
+    }
+    lastPaymentRef.current = null;
+    setStage('refunded');
+    tap('warning');
+  }, [tap]);
+
+  React.useEffect(() => {
+    if (stage === 'success' && refund === 0 && lastPaymentRef.current) {
+      doRefund();
+    }
+  }, [stage, refund, doRefund]);
+
   const pendingPaymentRef = React.useRef(null);
 
   React.useEffect(() => {
     if (!window.API) return undefined;
     const unsub = window.API.subscribe('payment_completed', (msg) => {
       if (pendingPaymentRef.current && msg.payment_id !== pendingPaymentRef.current) return;
+      lastPaymentRef.current = pendingPaymentRef.current || msg.payment_id;
       pendingPaymentRef.current = null;
       setStage('success');
       tap('success', { x: window.innerWidth / 2, y: window.innerHeight / 2 });
@@ -592,6 +615,7 @@ function StarsPayment() {
           // safety fallback if WS push never arrives (8s)
           setTimeout(() => {
             if (pendingPaymentRef.current === inv.payment_id) {
+              lastPaymentRef.current = inv.payment_id;
               pendingPaymentRef.current = null;
               setStage('success');
               tap('success', { x: window.innerWidth / 2, y: window.innerHeight / 2 });
@@ -659,7 +683,7 @@ function StarsPayment() {
 
       {/* Body */}
       <div style={{ padding: '18px 4px 0' }}>
-        {stage !== 'success' ? (
+        {(stage !== 'success' && stage !== 'refunded') ? (
           <>
             <div style={{
               fontFamily: '-apple-system, system-ui',
@@ -686,8 +710,10 @@ function StarsPayment() {
               <Pill bg="oklch(0.92 0.05 145)" fg="oklch(0.42 0.13 145)">refund 60s</Pill>
             </div>
           </>
+        ) : stage === 'success' ? (
+          <SuccessState refund={refund} onUndo={doRefund}/>
         ) : (
-          <SuccessState refund={refund} onUndo={() => setStage('idle')}/>
+          <RefundedState onReset={() => setStage('idle')}/>
         )}
       </div>
 
@@ -696,10 +722,10 @@ function StarsPayment() {
       )}
 
       <MainButton
-        label={stage === 'paying' ? 'Paying…' : stage === 'success' ? 'Send another' : 'Pay 1 Star'}
-        haptic={stage === 'success' ? 'soft' : 'medium'}
+        label={stage === 'paying' ? 'Paying…' : (stage === 'success' || stage === 'refunded') ? 'Send another' : 'Pay 1 Star'}
+        haptic={(stage === 'success' || stage === 'refunded') ? 'soft' : 'medium'}
         loading={stage === 'paying'}
-        onClick={stage === 'success' ? () => setStage('idle') : start}
+        onClick={(stage === 'success' || stage === 'refunded') ? () => setStage('idle') : start}
       />
     </div>
   );
@@ -785,6 +811,23 @@ function InvoiceSheet({ onConfirm, onCancel }) {
   );
 }
 
+function RefundedState({ onReset }) {
+  return (
+    <div>
+      <div style={{
+        fontFamily: '-apple-system, system-ui',
+        fontSize: 22, fontWeight: 700, letterSpacing: -0.4,
+        animation: 'tg-pop 480ms cubic-bezier(.2,1.6,.3,1)',
+      }}>Refunded ✓</div>
+      <div style={{
+        fontFamily: '-apple-system, system-ui',
+        fontSize: 14, color: 'var(--tg-subtitle-text)',
+        marginTop: 4, marginBottom: 16,
+      }}>Your Star has been returned. Balance unchanged.</div>
+    </div>
+  );
+}
+
 function SuccessState({ refund, onUndo }) {
   return (
     <div>
@@ -826,6 +869,12 @@ function SuccessState({ refund, onUndo }) {
             We never keep demo Stars — your balance stays the same.
           </div>
         </div>
+        <button onClick={onUndo} style={{
+          border: 0, borderRadius: 999, padding: '6px 10px',
+          background: 'var(--tg-secondary-bg)', color: 'var(--tg-text)',
+          fontFamily: '-apple-system, system-ui', fontSize: 12, fontWeight: 600,
+          cursor: 'pointer',
+        }}>Refund now</button>
       </div>
     </div>
   );
