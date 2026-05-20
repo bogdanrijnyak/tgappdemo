@@ -71,6 +71,8 @@ function HapticLab({ onShare }) {
     setSent(true);
     setTimeout(() => setSent(false), 2200);
     onShare && onShare(pattern);
+    const non_empty = pattern.filter((s) => s).length;
+    window.API && window.API.track && window.API.track('haptic_pattern_shared', { steps: pattern.length, filled: non_empty });
     if (window.API && window.API.isReady()) {
       try {
         const result = await window.API.fetch('/api/haptic-patterns', {
@@ -218,7 +220,13 @@ function HapticLab({ onShare }) {
         label={playing ? 'Stop' : 'Play pattern'}
         haptic={playing ? 'warning' : 'soft'}
         variant={playing ? 'destructive' : 'primary'}
-        onClick={() => setPlaying((p) => !p)}
+        onClick={() => {
+          setPlaying((p) => {
+            const next = !p;
+            window.API && window.API.track && window.API.track(next ? 'haptic_pattern_play' : 'haptic_pattern_stop');
+            return next;
+          });
+        }}
       />
     </div>
   );

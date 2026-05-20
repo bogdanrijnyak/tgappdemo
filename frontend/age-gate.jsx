@@ -24,10 +24,12 @@ function AgeVerificationGate({
   const verify = async (e) => {
     tap('soft', e);
     setStage('verifying');
+    window.API && window.API.track && window.API.track('age_verify_requested', { country, min_age: minAge });
     await new Promise((r) => setTimeout(r, 1400));
     tap('success');
     setStage('unlocked');
     window.tgLog && window.tgLog('age_verification_passed', { country, min_age: minAge });
+    window.API && window.API.track && window.API.track('age_verify_passed', { country, min_age: minAge });
     // 600 ms morph reveal — gate fades out, content scales in.
     setTimeout(() => {
       setRevealed(true);

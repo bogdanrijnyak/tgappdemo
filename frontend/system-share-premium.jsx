@@ -18,6 +18,7 @@ function QRScannerDemo() {
       const text = (e && e.data) || '';
       if (!text) return;
       setScanned(text); setStage('found'); tap('success');
+      window.API && window.API.track && window.API.track('qr_decoded', { source: 'tg_native', length: text.length });
       try { tg.closeScanQrPopup && tg.closeScanQrPopup(); } catch (err) {}
     };
     tg.onEvent('qrTextReceived', onQr);
@@ -25,6 +26,7 @@ function QRScannerDemo() {
   }, [tg, tap]);
   const scan = (e) => {
     tap('soft', e); setStage('scanning'); setScanned(null);
+    window.API && window.API.track && window.API.track('qr_scan_requested', { native: !!(tg && tg.showScanQrPopup) });
     if (tg && typeof tg.showScanQrPopup === 'function') {
       try {
         tg.showScanQrPopup({ text: 'Point at any QR code' });
@@ -33,7 +35,11 @@ function QRScannerDemo() {
       }
       return;
     }
-    setTimeout(() => { setScanned('t.me/durov?startapp=hi'); setStage('found'); tap('success'); }, 1800);
+    setTimeout(() => {
+      setScanned('t.me/durov?startapp=hi');
+      setStage('found'); tap('success');
+      window.API && window.API.track && window.API.track('qr_decoded', { source: 'mock' });
+    }, 1800);
   };
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>
@@ -184,7 +190,14 @@ function ClipboardDemo() {
         Looks like an API key. Reveal before pasting somewhere new.
       </div>
 
-      <PressCard haptic="soft" onPress={(e) => { tap('soft', e); setRevealed((r) => !r); }}
+      <PressCard haptic="soft" onPress={(e) => {
+          tap('soft', e);
+          setRevealed((r) => {
+            const next = !r;
+            window.API && window.API.track && window.API.track(next ? 'clipboard_revealed' : 'clipboard_hidden');
+            return next;
+          });
+        }}
         style={{
           padding: '12px', borderRadius: 12,
           background: revealed ? 'var(--tg-destructive-text)' : 'var(--tg-button)',
@@ -210,17 +223,20 @@ function WriteAccessDemo() {
   const [stage, setStage] = React.useState('idle'); // idle | asking | granted | denied
   const ask = (decision) => (e) => {
     tap('soft', e); setStage('asking');
+    window.API && window.API.track && window.API.track('write_access_requested');
     if (tg && typeof tg.requestWriteAccess === 'function') {
       try {
         tg.requestWriteAccess((granted) => {
           setStage(granted ? 'granted' : 'denied');
           tap(granted ? 'success' : 'warning');
+          window.API && window.API.track && window.API.track(granted ? 'write_access_granted' : 'write_access_denied', { source: 'tg_native' });
         });
         return;
       } catch (err) {}
     }
     setTimeout(() => {
       setStage(decision); tap(decision === 'granted' ? 'success' : 'warning');
+      window.API && window.API.track && window.API.track(decision === 'granted' ? 'write_access_granted' : 'write_access_denied', { source: 'mock' });
     }, 700);
   };
   return (
@@ -311,6 +327,7 @@ function ShareToStoryDemo() {
   const openStoryComposer = async () => {
     tap('success');
     setHint(null);
+    window.API && window.API.track && window.API.track('story_requested', { template: 'collectible', preset: 'bloom' });
     const tg = window.Telegram && window.Telegram.WebApp;
     const supports = tg && typeof tg.shareToStory === 'function' &&
                      (!tg.isVersionAtLeast || tg.isVersionAtLeast('7.8'));
@@ -334,10 +351,13 @@ function ShareToStoryDemo() {
           text: 'Built with the API Showcase ✨',
           widget_link: { url: 'https://t.me/APIShowcaseBot', name: 'Open showcase' },
         });
+        window.API && window.API.track && window.API.track('story_composer_opened');
       } else if (!supports) {
         setHint('Story sharing needs Telegram 10.5+. Try on a newer client.');
+        window.API && window.API.track && window.API.track('story_unsupported');
       } else {
         setHint('Backend not reachable — story image could not be generated.');
+        window.API && window.API.track && window.API.track('story_no_image');
       }
     } catch (e) {
       console.warn('story', e);
@@ -427,6 +447,7 @@ function ShareMessageDemo() {
   const sendTo = (id, e) => {
     tap('success', e); setSent(id); setOpen(false);
     window.tgLog && window.tgLog('prepared_message_sent', { peer_id: id });
+    window.API && window.API.track && window.API.track('share_message_sent', { peer: id });
     setTimeout(() => setSent(null), 2000);
   };
   // Try the native send-to sheet (Bot API 8.0) when the bot prepared a
@@ -551,6 +572,7 @@ function DownloadFileDemo() {
   const [hue, setHue] = React.useState(215);
   const build = async (e) => {
     tap('soft', e); setStage('building');
+    window.API && window.API.track && window.API.track('wallpaper_build_requested', { hue });
     if (window.API && window.API.isReady()) {
       try {
         const res = await window.API.fetch('/api/share/download', {
@@ -575,6 +597,7 @@ function DownloadFileDemo() {
       await new Promise((r) => setTimeout(r, 1100));
     }
     setStage('done'); tap('success');
+    window.API && window.API.track && window.API.track('wallpaper_built', { hue });
   };
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>
@@ -646,14 +669,19 @@ function SwitchInlineDemo() {
   const [stage, setStage] = React.useState('idle'); // idle | opening | done
   const start = (e) => {
     tap('soft', e); setStage('opening');
+    window.API && window.API.track && window.API.track('switch_inline_requested', { query: 'cosmic-crystal' });
     if (tg && typeof tg.switchInlineQuery === 'function') {
       try {
         tg.switchInlineQuery('cosmic-crystal', ['users', 'groups']);
         setStage('done');
+        window.API && window.API.track && window.API.track('switch_inline_done', { source: 'tg_native' });
         return;
       } catch (err) {}
     }
-    setTimeout(() => { setStage('done'); tap('success'); }, 700);
+    setTimeout(() => {
+      setStage('done'); tap('success');
+      window.API && window.API.track && window.API.track('switch_inline_done', { source: 'mock' });
+    }, 700);
   };
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>

@@ -89,6 +89,7 @@ function StorageInspector() {
     tap('success');
     setFlash(k);
     setTimeout(() => setFlash(null), 1400);
+    window.API && window.API.track && window.API.track('storage_added', { tab, key: k });
     if (tab === 'cloud' && window.API && window.API.isReady()) {
       window.API.fetch('/api/cloud/' + encodeURIComponent(k), {
         method: 'PUT', body: JSON.stringify({ value: String(v) }),
@@ -99,6 +100,7 @@ function StorageInspector() {
   const removeEntry = (k) => {
     setEntries((all) => ({ ...all, [tab]: all[tab].filter((e) => e.k !== k) }));
     tap('warning');
+    window.API && window.API.track && window.API.track('storage_removed', { tab, key: k });
     if (tab === 'cloud' && window.API && window.API.isReady()) {
       window.API.fetch('/api/cloud/' + encodeURIComponent(k), { method: 'DELETE' })
         .catch((e) => console.warn('cloud delete', e));
@@ -124,6 +126,7 @@ function StorageInspector() {
     tap('success', e);
     setEntries((all) => ({ ...all, secure: stashRef.current || [] }));
     setSecureCleared(false);
+    window.API && window.API.track && window.API.track('secure_storage_restored');
   };
 
   return (
@@ -562,6 +565,7 @@ function StarsPayment() {
   const doRefund = React.useCallback(async () => {
     const id = lastPaymentRef.current;
     if (!id) { setStage('idle'); return; }
+    window.API && window.API.track && window.API.track('stars_refunded', { payment_id: id });
     if (window.API && window.API.isReady()) {
       try {
         await window.API.fetch('/api/stars/refund/' + id, { method: 'POST' });
@@ -589,13 +593,19 @@ function StarsPayment() {
       setStage('success');
       tap('success', { x: window.innerWidth / 2, y: window.innerHeight / 2 });
       burst();
+      window.API && window.API.track && window.API.track('stars_payment_completed', { payment_id: msg.payment_id, amount: msg.amount });
     });
     return unsub;
   }, [tap]);
 
-  const start = (e) => { tap('soft', e); setStage('invoice'); };
+  const start = (e) => {
+    tap('soft', e);
+    setStage('invoice');
+    window.API && window.API.track && window.API.track('stars_invoice_opened');
+  };
   const confirm = async () => {
     setStage('paying');
+    window.API && window.API.track && window.API.track('stars_pay_confirmed');
     try {
       if (window.API && window.API.isReady()) {
         const inv = await window.API.fetch('/api/stars/invoice', {
@@ -632,7 +642,10 @@ function StarsPayment() {
     tap('success', { x: window.innerWidth / 2, y: window.innerHeight / 2 });
     burst();
   };
-  const cancel = () => { tap('warning'); pendingPaymentRef.current = null; setStage('idle'); };
+  const cancel = () => {
+    tap('warning'); pendingPaymentRef.current = null; setStage('idle');
+    window.API && window.API.track && window.API.track('stars_pay_cancelled');
+  };
 
   const burst = () => {
     const pts = Array.from({ length: 26 }, (_, i) => ({
@@ -909,12 +922,14 @@ function BiometricVault() {
   const unlock = async () => {
     setStage('scanning');
     tap('soft', { x: window.innerWidth / 2, y: window.innerHeight / 2 });
+    window.API && window.API.track && window.API.track('vault_unlock_requested');
     const tg = window.Telegram && window.Telegram.WebApp;
     const bm = tg && tg.BiometricManager;
     if (bm && typeof bm.authenticate === 'function') {
       const finish = (granted) => {
         if (granted) {
           tap('success');
+          window.API && window.API.track && window.API.track('vault_unlocked', { source: 'tg_biometric' });
           loadSecret().finally(() => {
             setStage('unlocked');
             setConfetti(true);
@@ -922,6 +937,7 @@ function BiometricVault() {
           });
         } else {
           tap('error');
+          window.API && window.API.track && window.API.track('vault_denied', { source: 'tg_biometric' });
           setStage('denied');
           setTimeout(() => setStage('locked'), 1500);
         }
@@ -938,12 +954,14 @@ function BiometricVault() {
     await new Promise((r) => setTimeout(r, 1400));
     if (Math.random() < 0.92) {
       tap('success');
+      window.API && window.API.track && window.API.track('vault_unlocked', { source: 'mock' });
       await loadSecret();
       setStage('unlocked');
       setConfetti(true);
       setTimeout(() => setConfetti(false), 1500);
     } else {
       tap('error');
+      window.API && window.API.track && window.API.track('vault_denied', { source: 'mock' });
       setStage('denied');
       setTimeout(() => setStage('locked'), 1500);
     }

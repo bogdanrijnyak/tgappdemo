@@ -17,7 +17,9 @@ function ReactionPicker({ targetKind = 'message', onClose }) {
     tap('selection', e);
     setPicked((p) => {
       const cur = p[emoji] || 0;
-      return { ...p, [emoji]: cur ? 0 : 1 };
+      const next = { ...p, [emoji]: cur ? 0 : 1 };
+      window.API && window.API.track && window.API.track(cur ? 'reaction_removed' : 'reaction_added', { emoji });
+      return next;
     });
   };
 
@@ -25,6 +27,7 @@ function ReactionPicker({ targetKind = 'message', onClose }) {
     tap(paid < 5 ? 'medium' : 'heavy', e);
     setPaid((n) => Math.min(99, n + 1));
     setShimmerSeed((s) => s + 1);
+    window.API && window.API.track && window.API.track('paid_reaction_star_added', { total: paid + 1 });
   };
 
   return (

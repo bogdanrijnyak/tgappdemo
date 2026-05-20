@@ -126,6 +126,7 @@ function DynamicThemeDemo() {
   const [theme, setTheme] = React.useState(document.documentElement.dataset.tgMode || 'light');
   const apply = (id, e) => {
     tap('selection', e); setTheme(id); applyTheme(id);
+    window.API && window.API.track && window.API.track('theme_changed', { theme: id });
   };
   const tokens = [
     { name: '--tg-bg' },
@@ -375,6 +376,7 @@ function VerticalSwipesDemo() {
       if (enabled) tg.disableVerticalSwipes && tg.disableVerticalSwipes();
       else tg.enableVerticalSwipes && tg.enableVerticalSwipes();
     } catch (e) {}
+    window.API && window.API.track && window.API.track('vertical_swipes_toggled', { disabled: enabled });
   }, [enabled, tg]);
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>
@@ -469,6 +471,7 @@ function FullscreenDemo() {
   }, [tg]);
   const toggle = (e) => {
     tap('medium', e);
+    const wasFs = tg ? tg.isFullscreen : fs;
     if (tg) {
       try {
         if (tg.isFullscreen) tg.exitFullscreen && tg.exitFullscreen();
@@ -476,6 +479,7 @@ function FullscreenDemo() {
       } catch (err) {}
     }
     setFs((f) => !f);
+    window.API && window.API.track && window.API.track('fullscreen_toggled', { enabled: !wasFs });
   };
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>
@@ -616,6 +620,7 @@ function LockOrientationDemo() {
       else if (typeof tg.lockOrientation === 'function') tg.lockOrientation(locked);
       else if (screen.orientation && screen.orientation.lock) screen.orientation.lock(locked).catch(() => {});
     } catch (e) {}
+    window.API && window.API.track && window.API.track('orientation_locked', { mode: locked });
   }, [locked, tg]);
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>

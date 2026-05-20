@@ -16,6 +16,7 @@ function PhoneOnlyDemo() {
   const ask = (which, e) => {
     tap('success', e);
     setPicked(which);
+    window.API && window.API.track && window.API.track('contact_requested', { kind: which });
     const tg = window.Telegram && window.Telegram.WebApp;
     const mock = which === 'phone'
       ? { phone_number: '+380 50 555 04 12' }
@@ -132,6 +133,7 @@ function OpenTelegramLinkDemo() {
   const open = (e) => {
     tap('soft', e);
     setOpening(true); setOpened(null);
+    window.API && window.API.track && window.API.track('tg_link_opened', { url });
     const tg = window.Telegram && window.Telegram.WebApp;
     if (tg && typeof tg.openTelegramLink === 'function') {
       try {
@@ -200,6 +202,7 @@ function BrowserOptionsDemo() {
   const [iv, setIv] = React.useState(true);
   const [browser, setBrowser] = React.useState('default');
   const fire = () => {
+    window.API && window.API.track && window.API.track('external_link_opened', { instant_view: iv, browser });
     if (!tg || typeof tg.openLink !== 'function') return;
     try {
       tg.openLink('https://example.com', {

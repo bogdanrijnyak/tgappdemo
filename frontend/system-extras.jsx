@@ -30,6 +30,7 @@ function CustomMethodInspector() {
     let parsedParams = {};
     try { parsedParams = JSON.parse(params || '{}'); setParamErr(null); }
     catch (err) { setParamErr(err.message); setBusy(false); return; }
+    window.API && window.API.track && window.API.track('custom_method_called', { method });
     const t0 = performance.now();
     const tg = window.Telegram && window.Telegram.WebApp;
     // Try the real RPC bridge first; fall back to the mock response so the
@@ -385,6 +386,7 @@ function ClosingConfirmDemo() {
       if (warn) tg.enableClosingConfirmation && tg.enableClosingConfirmation();
       else tg.disableClosingConfirmation && tg.disableClosingConfirmation();
     } catch (e) {}
+    window.API && window.API.track && window.API.track('closing_confirm_toggled', { enabled: warn });
   }, [warn, tg]);
   const tryClose = (e) => {
     tap('soft', e);
@@ -540,6 +542,7 @@ function HomeScreenDemo() {
 
   const press = (e) => {
     tap(state === 'failed' ? 'warning' : 'soft', e);
+    window.API && window.API.track && window.API.track('home_screen_pressed', { from: state });
     if (tg && typeof tg.addToHomeScreen === 'function' && state === 'missed') {
       try { tg.addToHomeScreen(); } catch (err) {}
       return;

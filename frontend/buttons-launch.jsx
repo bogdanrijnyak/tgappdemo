@@ -28,6 +28,7 @@ function MainButtonLabDemo() {
       });
       if (busy) mb.showProgress(false); else mb.hideProgress();
     } catch (e) {}
+    window.API && window.API.track && window.API.track('main_button_configured', { shine, busy, destructive: dest });
     return () => { try { mb.hide(); mb.hideProgress(); } catch (e) {} };
   }, [tg, label, shine, busy, dest]);
 
@@ -119,6 +120,7 @@ function SecondaryButtonDemo() {
       main.setParams({ text: 'Continue', is_visible: true, is_active: true });
       sec.setParams({ text: 'Cancel', is_visible: true, position });
     } catch (e) {}
+    window.API && window.API.track && window.API.track('secondary_button_positioned', { position });
     return () => { try { main.hide(); sec.hide(); } catch (e) {} };
   }, [tg, position]);
   return (
@@ -202,7 +204,10 @@ function SettingsSheetDemo() {
   React.useEffect(() => {
     if (!tg || !tg.SettingsButton) return undefined;
     const sb = tg.SettingsButton;
-    const onClick = () => setOpen(true);
+    const onClick = () => {
+      setOpen(true);
+      window.API && window.API.track && window.API.track('settings_sheet_opened', { source: 'tg_settings_button' });
+    };
     try { sb.show && sb.show(); sb.onClick && sb.onClick(onClick); } catch (e) {}
     return () => { try { sb.offClick && sb.offClick(onClick); sb.hide && sb.hide(); } catch (e) {} };
   }, [tg]);
@@ -216,7 +221,10 @@ function SettingsSheetDemo() {
          actions sheet. Apps can register entries via <code style={blCode}>SettingsButton.show()</code>.</div>
 
       <PressCard haptic="soft"
-        onPress={(e) => { tap('soft', e); setOpen(true); }}
+        onPress={(e) => {
+          tap('soft', e); setOpen(true);
+          window.API && window.API.track && window.API.track('settings_sheet_opened', { source: 'card_button' });
+        }}
         style={{
           padding: '12px 14px', borderRadius: 12,
           background: 'var(--tg-section-bg)',
@@ -834,6 +842,7 @@ function LocationDemo() {
     setStage('located');
     tap('success');
     setErrorMsg(null);
+    window.API && window.API.track && window.API.track('location_resolved', { accuracy });
   };
 
   const askBrowserGeo = () => {
@@ -847,6 +856,7 @@ function LocationDemo() {
       (err) => {
         setErrorMsg(err.message || 'Permission denied');
         setStage('denied'); tap('error');
+        window.API && window.API.track && window.API.track('location_denied', { reason: err && err.message });
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
     );
@@ -854,6 +864,7 @@ function LocationDemo() {
 
   const get = (e) => {
     tap('soft', e); setStage('locating'); setErrorMsg(null);
+    window.API && window.API.track && window.API.track('location_requested');
     const lm = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.LocationManager;
     if (lm && typeof lm.getLocation === 'function') {
       const ask = () => lm.getLocation((data) => {
@@ -1041,6 +1052,7 @@ function HapticEchoDemo() {
     if (window.API && window.API.isReady()) {
       window.API.send({ type: 'haptic_emit', target_device: 'any', style: 'heavy' });
     }
+    window.API && window.API.track && window.API.track('haptic_echo_sent', { style: 'heavy' });
     setTimeout(() => {
       tap('soft', { x: window.innerWidth / 2, y: window.innerHeight * 0.4 });
       setBursts((bs) => bs.filter((b) => b.id !== id));
