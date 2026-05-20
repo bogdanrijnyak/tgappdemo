@@ -449,16 +449,41 @@ function View({ routeKey, dir, children }) {
   );
 }
 
-// One layer of the View — content is always visible; outgoing layers fade.
+// One layer of the View — liquid-glass animated swap.
+// Entering layers blur-in from the appropriate side, leaving layers refract
+// out the other way. Going back, the outgoing demo melts to the right while
+// the gallery materializes from behind it through a soft blur.
 function ViewLayer({ leaving, dir, children }) {
-  const leaveTo = dir === 'forward' ? -28 : 28;
+  const [entered, setEntered] = React.useState(false);
+  React.useEffect(() => {
+    const r = requestAnimationFrame(() => setEntered(true));
+    return () => cancelAnimationFrame(r);
+  }, []);
+
+  const forward = dir === 'forward';
+  const exitX = forward ? -34 : 40;
+  const enterX = forward ? 34 : -40;
+
+  let translateX, opacity, blur, scale;
+  if (leaving) {
+    translateX = exitX; opacity = 0; blur = 10; scale = forward ? 0.97 : 1.04;
+  } else if (!entered) {
+    translateX = enterX; opacity = 0; blur = 12; scale = forward ? 1.02 : 0.97;
+  } else {
+    translateX = 0; opacity = 1; blur = 0; scale = 1;
+  }
+
   return (
     <div style={{
       position: 'absolute', top: 0, right: 0, bottom: 0, left: 0,
-      opacity: leaving ? 0 : 1,
-      transform: leaving ? `translateX(${leaveTo}px)` : 'translateX(0)',
-      transition: 'opacity 240ms cubic-bezier(.2,.7,.3,1), transform 280ms cubic-bezier(.2,.7,.3,1)',
-      willChange: 'opacity, transform',
+      opacity,
+      transform: `translateX(${translateX}px) scale(${scale})`,
+      filter: `blur(${blur}px)`,
+      transition:
+        'opacity 320ms cubic-bezier(.2,.7,.3,1),' +
+        ' transform 360ms cubic-bezier(.2,.7,.3,1),' +
+        ' filter 320ms cubic-bezier(.2,.7,.3,1)',
+      willChange: 'opacity, transform, filter',
     }}>{children}</div>
   );
 }

@@ -66,21 +66,25 @@ function HostHeader({ title, onBack, onClose, scrolled = false }) {
       padding: '54px 14px 0',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       borderBottomLeftRadius: 22, borderBottomRightRadius: 22,
-      backdropFilter: 'blur(24px) saturate(180%)',
-      WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+      backdropFilter: 'blur(36px) saturate(220%) brightness(1.06)',
+      WebkitBackdropFilter: 'blur(36px) saturate(220%) brightness(1.06)',
       background: dark
-        ? `linear-gradient(to bottom, rgba(16,16,18,${scrolled ? 0.62 : 0.42}), rgba(16,16,18,${scrolled ? 0.5 : 0.26}))`
-        : `linear-gradient(to bottom, rgba(255,255,255,${scrolled ? 0.72 : 0.5}), rgba(255,255,255,${scrolled ? 0.5 : 0.28}))`,
+        ? `linear-gradient(to bottom, rgba(22,22,26,${scrolled ? 0.5 : 0.30}), rgba(22,22,26,${scrolled ? 0.4 : 0.18}))`
+        : `linear-gradient(to bottom, rgba(255,255,255,${scrolled ? 0.62 : 0.38}), rgba(255,255,255,${scrolled ? 0.42 : 0.20}))`,
+      // Glass rim: highlight strip at the top edge, faint hairline at the bottom, soft cast shadow.
       boxShadow: dark
-        ? 'inset 0 -0.5px 0 rgba(255,255,255,0.08), 0 2px 14px rgba(0,0,0,0.25)'
-        : 'inset 0 -0.5px 0 rgba(0,0,0,0.06), 0 2px 14px rgba(15,17,20,0.08)',
-      transition: 'background 220ms ease',
+        ? 'inset 0 0.5px 0 rgba(255,255,255,0.18), inset 0 -0.5px 0 rgba(255,255,255,0.05), 0 6px 22px rgba(0,0,0,0.38)'
+        : 'inset 0 0.5px 0 rgba(255,255,255,0.85), inset 0 -0.5px 0 rgba(0,0,0,0.08), 0 6px 22px rgba(15,17,20,0.10)',
+      borderBottom: dark
+        ? '0.5px solid rgba(255,255,255,0.10)'
+        : '0.5px solid rgba(255,255,255,0.55)',
+      transition: 'background 220ms ease, box-shadow 220ms ease',
       color: 'var(--tg-text)',
       boxSizing: 'border-box',
     }}>
-      <button onClick={onBack} aria-label="Back" style={iconBtn(onBack ? 1 : 0)}>
+      <button onClick={onBack} aria-label="Back" style={iconBtn(onBack ? 1 : 0, dark)}>
         <svg width="11" height="18" viewBox="0 0 11 18" fill="none" aria-hidden>
-          <path d="M9 2L2 9l7 7" stroke="currentColor" strokeWidth="2.2"
+          <path d="M9 2L2 9l7 7" stroke="currentColor" strokeWidth="2.4"
                 strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </button>
@@ -89,9 +93,9 @@ function HostHeader({ title, onBack, onClose, scrolled = false }) {
         fontWeight: 600, fontSize: 16, letterSpacing: -0.2,
         color: 'var(--tg-text)',
       }}>{title}</div>
-      <button onClick={onClose} aria-label="Close" style={iconBtn(1)}>
+      <button onClick={onClose} aria-label="Close" style={iconBtn(1, dark)}>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
-          <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="2"
+          <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="2.2"
                 strokeLinecap="round"/>
         </svg>
       </button>
@@ -99,13 +103,24 @@ function HostHeader({ title, onBack, onClose, scrolled = false }) {
   );
 }
 
-const iconBtn = (visible) => ({
-  width: 32, height: 32, borderRadius: 16,
+const iconBtn = (visible, dark = false) => ({
+  width: 34, height: 34, borderRadius: 17,
   display: 'grid', placeItems: 'center',
-  border: 0, background: 'transparent', cursor: 'pointer',
-  color: 'var(--tg-hint)',
+  border: dark
+    ? '0.5px solid rgba(255,255,255,0.20)'
+    : '0.5px solid rgba(255,255,255,0.75)',
+  background: dark
+    ? 'linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06))'
+    : 'linear-gradient(180deg, rgba(255,255,255,0.72), rgba(255,255,255,0.32))',
+  backdropFilter: 'blur(14px) saturate(190%)',
+  WebkitBackdropFilter: 'blur(14px) saturate(190%)',
+  cursor: 'pointer',
+  color: 'var(--tg-text)',
+  boxShadow: dark
+    ? 'inset 0 0.5px 0 rgba(255,255,255,0.28), 0 1px 4px rgba(0,0,0,0.35)'
+    : 'inset 0 0.5px 0 rgba(255,255,255,0.95), 0 1px 3px rgba(15,17,20,0.12)',
   opacity: visible ? 1 : 0, pointerEvents: visible ? 'auto' : 'none',
-  transition: 'opacity 200ms ease, background 200ms ease',
+  transition: 'opacity 200ms ease, background 200ms ease, transform 120ms ease',
 });
 
 // ─── MainButton ─────────────────────────────────────────────────────────
