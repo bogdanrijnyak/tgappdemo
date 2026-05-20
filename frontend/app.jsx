@@ -59,6 +59,47 @@ function App() {
     setRoute('gallery');
   };
 
+  // Edge-swipe-back: drag from the left edge to pop the current demo/stub.
+  // Required because the chevron in HostHeader is easy to miss on real
+  // devices, leaving users stuck inside a demo with no obvious way out.
+  const canSwipeBack = typeof route === 'object' && (route.kind === 'demo' || route.kind === 'stub');
+  React.useEffect(() => {
+    if (!canSwipeBack) return;
+    const EDGE = 28;        // touch must start within this many px of the left edge
+    const DIST = 64;        // horizontal distance required to fire
+    const ANGLE = 0.7;      // |dy/dx| must stay below this (mostly horizontal)
+    let sx = 0, sy = 0, tracking = false;
+    const start = (e) => {
+      const t = e.touches[0];
+      if (!t) return;
+      if (t.clientX <= EDGE) { sx = t.clientX; sy = t.clientY; tracking = true; }
+    };
+    const move = (e) => {
+      if (!tracking) return;
+      const t = e.touches[0];
+      if (!t) return;
+      const dx = t.clientX - sx;
+      const dy = Math.abs(t.clientY - sy);
+      if (dx > DIST && dy / Math.max(dx, 1) < ANGLE) {
+        tracking = false;
+        backToGallery();
+      } else if (dx < -10 || dy > 80) {
+        tracking = false;
+      }
+    };
+    const end = () => { tracking = false; };
+    window.addEventListener('touchstart', start, { passive: true });
+    window.addEventListener('touchmove', move, { passive: true });
+    window.addEventListener('touchend', end, { passive: true });
+    window.addEventListener('touchcancel', end, { passive: true });
+    return () => {
+      window.removeEventListener('touchstart', start);
+      window.removeEventListener('touchmove', move);
+      window.removeEventListener('touchend', end);
+      window.removeEventListener('touchcancel', end);
+    };
+  }, [canSwipeBack]);
+
   // Title shown in the host header.
   const headerTitle = route === 'onboarding'
     ? 'API Showcase'
