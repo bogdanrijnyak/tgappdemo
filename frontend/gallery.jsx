@@ -45,7 +45,7 @@ function Gallery({ userName, progress, isPremium, onOpen, onScroll, initialScrol
             color: 'var(--tg-hint)', fontWeight: 500
           }}>Hi, {userName}.</div>
           <LaunchModeBadge
-            modeId={DEFAULT_LAUNCH_MODE}
+            modeId={detectLaunchMode()}
             onPress={() => {
               const card = CATEGORIES.flatMap((c) => c.cards).find((c) => c.demoId === 'launch');
               if (card) onOpen(card);

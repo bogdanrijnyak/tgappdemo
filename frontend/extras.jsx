@@ -11,11 +11,40 @@
 function PhoneOnlyDemo() {
   const tap = useHaptic();
   const [picked, setPicked] = React.useState(null); // 'phone' | 'contact' | null
-  const sample = picked === 'phone'
-    ? { phone_number: '+380 50 555 04 12' }
-    : picked === 'contact'
-    ? { phone_number: '+380 50 555 04 12', first_name: 'Alex', last_name: 'Carter', user_id: 802441099, vcard: 'BEGIN:VCARD\nVERSION:3.0\nFN:Alex Carter\nTEL:+380505550412\nEND:VCARD' }
-    : null;
+  const [sample, setSample] = React.useState(null);
+
+  const ask = (which, e) => {
+    tap('success', e);
+    setPicked(which);
+    const tg = window.Telegram && window.Telegram.WebApp;
+    const mock = which === 'phone'
+      ? { phone_number: '+380 50 555 04 12' }
+      : { phone_number: '+380 50 555 04 12', first_name: 'Alex', last_name: 'Carter', user_id: 802441099, vcard: 'BEGIN:VCARD\nVERSION:3.0\nFN:Alex Carter\nTEL:+380505550412\nEND:VCARD' };
+    // requestContact is the real WebApp API; the host returns a signed
+    // contact payload via initDataUnsafe. We project that into the shape
+    // each branch advertises (phone-only vs full vCard).
+    if (tg && typeof tg.requestContact === 'function') {
+      try {
+        tg.requestContact((shared, info) => {
+          if (!shared) { setSample(null); return; }
+          const c = (info && info.responseUnsafe && info.responseUnsafe.contact) || {};
+          if (which === 'phone') {
+            setSample({ phone_number: c.phone_number || mock.phone_number });
+          } else {
+            setSample({
+              phone_number: c.phone_number || mock.phone_number,
+              first_name: c.first_name || mock.first_name,
+              last_name: c.last_name || mock.last_name,
+              user_id: c.user_id || mock.user_id,
+            });
+          }
+        });
+        return;
+      } catch (_) { /* fall through to mock */ }
+    }
+    setSample(mock);
+  };
+
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>
       <div style={{
@@ -27,13 +56,13 @@ function PhoneOnlyDemo() {
          the full vCard. Side-by-side they make the trade-off obvious.</div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <PressCard haptic="soft" onPress={() => { tap('success'); setPicked('phone'); }}
+        <PressCard haptic="soft" onPress={(e) => ask('phone', e)}
           style={tradeCardStyle(picked === 'phone', 200)}>
           <div style={{ fontSize: 22 }}>📞</div>
           <div style={tradeTitleStyle}>Phone only</div>
           <div style={tradeHintStyle}>Minimal scope · just the number</div>
         </PressCard>
-        <PressCard haptic="soft" onPress={() => { tap('success'); setPicked('contact'); }}
+        <PressCard haptic="soft" onPress={(e) => ask('contact', e)}
           style={tradeCardStyle(picked === 'contact', 50)}>
           <div style={{ fontSize: 22 }}>📇</div>
           <div style={tradeTitleStyle}>Full contact</div>
