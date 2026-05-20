@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Analytics · dupa.online</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    background: linear-gradient(160deg, #0c0f1a 0%, #07080a 60%);
+    color: #f0f3f8;
+    line-height: 1.55;
+  }
+  a { color: inherit; }
+  .wrap {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 56px 22px 96px;
+  }
+  header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 42px;
+  }
+  .logo {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: linear-gradient(135deg, #ff6a1a, #ff3b30);
+    display: grid; place-items: center;
+    font-weight: 800; font-size: 22px;
+    box-shadow: 0 8px 22px rgba(255, 106, 26, 0.35);
+  }
+  .brand { font-weight: 700; font-size: 17px; letter-spacing: -0.2px; }
+  .brand small { display: block; opacity: 0.6; font-weight: 500; font-size: 11px; letter-spacing: 0.4px; text-transform: uppercase; margin-top: 1px; }
+  h1 {
+    font-size: 42px; font-weight: 800; letter-spacing: -1px;
+    margin: 0 0 14px;
+    background: linear-gradient(135deg, #fff 30%, #b9c8ff 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .lead { font-size: 18px; opacity: 0.78; max-width: 620px; margin: 0 0 28px; }
+  .cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 56px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 22px; border-radius: 12px;
+    font-weight: 600; font-size: 14px; text-decoration: none;
+    transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  }
+  .btn-primary { background: linear-gradient(135deg, #2481cc, #0a84ff); color: #fff; box-shadow: 0 8px 22px rgba(36, 129, 204, 0.45); }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(36, 129, 204, 0.55); }
+  .btn-ghost { background: rgba(255,255,255,0.06); color: #fff; border: 0.5px solid rgba(255,255,255,0.12); }
+  .btn-ghost:hover { background: rgba(255,255,255,0.1); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin-bottom: 48px;
+  }
+  @media (min-width: 720px) { .grid { grid-template-columns: 1fr 1fr; } }
+  .card {
+    background: rgba(255,255,255,0.04);
+    border: 0.5px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 20px;
+  }
+  .card h3 { margin: 0 0 6px; font-size: 16px; font-weight: 700; }
+  .card p { margin: 0; font-size: 13px; opacity: 0.74; }
+
+  section h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; margin: 56px 0 16px; }
+  .steps { counter-reset: s; padding: 0; list-style: none; }
+  .steps li {
+    counter-increment: s;
+    position: relative;
+    padding: 14px 16px 14px 56px;
+    background: rgba(255,255,255,0.035);
+    border-left: 2px solid rgba(255,255,255,0.12);
+    border-radius: 0 10px 10px 0;
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+  .steps li::before {
+    content: counter(s);
+    position: absolute; left: 18px; top: 14px;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: linear-gradient(135deg, #ff6a1a, #ff3b30);
+    color: #fff; font-weight: 700; font-size: 13px;
+    display: grid; place-items: center;
+  }
+  code {
+    font-family: ui-monospace, "SF Mono", monospace;
+    font-size: 12px;
+    background: rgba(255,255,255,0.06);
+    padding: 1px 6px; border-radius: 4px;
+  }
+  pre {
+    background: #050608;
+    border: 0.5px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-family: ui-monospace, "SF Mono", monospace;
+    font-size: 12px;
+    line-height: 1.55;
+    overflow-x: auto;
+    margin: 10px 0 18px;
+  }
+  .muted { opacity: 0.6; font-size: 12px; }
+  footer { margin-top: 56px; opacity: 0.5; font-size: 12px; }
+  footer a { text-decoration: none; border-bottom: 0.5px dashed rgba(255,255,255,0.35); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo">A</div>
+    <div class="brand">analytics.dupa.online<small>self-hosted Umami</small></div>
+  </header>
+
+  <h1>Drop a script tag, get product analytics.</h1>
+  <p class="lead">Pageviews, sessions, retention, funnels, identified visitors, custom events — privacy-friendly, no cookies needed, fully self-hosted on the same VPS as your apps.</p>
+
+  <div class="cta-row">
+    <a class="btn btn-primary" href="/login" id="cta-signin">Sign in →</a>
+    <a class="btn btn-ghost" href="#integrate">How to integrate</a>
+    <a class="btn btn-ghost" href="#wired">What's already wired</a>
+  </div>
+
+  <div class="grid">
+    <div class="card"><h3>📈 Auto pageviews</h3><p>Every visit is recorded with referrer, screen, language, browser — zero config beyond the script tag.</p></div>
+    <div class="card"><h3>🎯 Custom events</h3><p><code>umami.track('event', {props})</code> from JS or POST to <code>/api/send</code> from any backend.</p></div>
+    <div class="card"><h3>👤 Visitor identify</h3><p>Bind a stable user id to the session so funnels span devices.</p></div>
+    <div class="card"><h3>🔌 No tracking cookies</h3><p>Fingerprint-free session bucketing. GDPR / DSGVO clean by default.</p></div>
+  </div>
+
+  <section id="integrate">
+    <h2>Onboard a new app in 3 steps</h2>
+    <ol class="steps">
+      <li><strong>Create a website in Umami.</strong> <a href="/login">Sign in</a> → <code>Websites → Add</code> → name + domain → copy the Website ID (UUID).</li>
+      <li>
+        <strong>Paste this in the <code>&lt;head&gt;</code> of your app:</strong>
+        <pre>&lt;script defer
+  src="https://analytics.dupa.online/script.js"
+  data-website-id="YOUR-UUID"
+  data-host-url="https://analytics.dupa.online"
+  data-domains="my-app.example.com"&gt;&lt;/script&gt;</pre>
+      </li>
+      <li>
+        <strong>Fire custom events at key actions:</strong>
+        <pre>umami.track('signup_completed', { plan: 'pro' });
+umami.identify('user-123', { email: '...', country: 'UA' });</pre>
+      </li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>From any backend (server-side)</h2>
+    <pre>curl -X POST https://analytics.dupa.online/api/send \
+  -H "Content-Type: application/json" \
+  -d '{"type":"event","payload":{
+    "website":"YOUR-UUID",
+    "hostname":"my-app.example.com",
+    "url":"/checkout",
+    "name":"purchase",
+    "data":{"plan":"pro","amount":49}
+  }}'</pre>
+    <p class="muted">For per-user sessions, send a deterministic <code>User-Agent</code> and <code>X-Forwarded-For</code> per visitor — Umami groups sessions by IP+UA hash.</p>
+  </section>
+
+  <section id="wired">
+    <h2>Already wired on this VPS</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>🚀 tgappdemo</h3>
+        <p><a href="https://demo.dupa.online">demo.dupa.online</a> — Telegram Mini-App showcase. Auto pageviews + ~45 card-level events (Stars pay, vault unlock, story render, QR scan, haptic share, etc).</p>
+      </div>
+      <div class="card">
+        <h3>📊 tgads-dash</h3>
+        <p><a href="https://tgads.dupa.online">tgads.dupa.online</a> — Telegram Ads tracker dashboard. Login/register/logout, account/channel/campaign creation, filter changes, MTProto save.</p>
+      </div>
+    </div>
+    <p class="muted">Source examples: <code>frontend/api-client.js</code> (browser) and <code>streamlit/app.py::umami_track</code> (server).</p>
+  </section>
+
+  <footer>
+    Self-hosted Umami v3.x · Behind nginx + Let's Encrypt · <a href="/login">Open dashboard</a>
+  </footer>
+</div>
+
+<script>
+  // If user is already signed in (Umami stores its token in localStorage),
+  // skip the landing and jump to the dashboard. Lightweight, no deps.
+  try {
+    if (localStorage.getItem('umami.auth')) {
+      window.location.replace('/dashboard');
+    }
+  } catch (e) {}
+</script>
+</body>
+</html>
