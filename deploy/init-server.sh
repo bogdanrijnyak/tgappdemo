@@ -19,7 +19,7 @@ mkdir -p nginx/letsencrypt nginx/webroot
 # answer the ACME challenge over port 80.
 echo "==> stage 1: starting stack with HTTP-only nginx"
 cp nginx/site-http-only.conf nginx/site.conf.bak 2>/dev/null || true
-docker compose -f docker-compose.yml -f deploy/docker-compose.bootstrap.yml up -d --build
+docker compose -f docker-compose.yml -f deploy/docker-compose.bootstrap.yml --project-directory "$APP_DIR" up -d --build
 
 echo "==> waiting for nginx to answer port 80"
 for i in $(seq 1 30); do
