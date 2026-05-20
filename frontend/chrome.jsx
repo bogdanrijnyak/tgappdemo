@@ -82,9 +82,9 @@ function HostHeader({ title, onBack, onClose, scrolled = false }) {
       color: 'var(--tg-text)',
       boxSizing: 'border-box',
     }}>
-      <button onClick={onBack} aria-label="Back" style={iconBtn(onBack ? 1 : 0, dark)}>
+      <button onClick={onBack} aria-label="Back" style={iconBtn(onBack ? 1 : 0)}>
         <svg width="11" height="18" viewBox="0 0 11 18" fill="none" aria-hidden>
-          <path d="M9 2L2 9l7 7" stroke="currentColor" strokeWidth="2.4"
+          <path d="M9 2L2 9l7 7" stroke="currentColor" strokeWidth="2.2"
                 strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </button>
@@ -93,9 +93,9 @@ function HostHeader({ title, onBack, onClose, scrolled = false }) {
         fontWeight: 600, fontSize: 16, letterSpacing: -0.2,
         color: 'var(--tg-text)',
       }}>{title}</div>
-      <button onClick={onClose} aria-label="Close" style={iconBtn(1, dark)}>
+      <button onClick={onClose} aria-label="Close" style={iconBtn(1)}>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
-          <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="2.2"
+          <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="2"
                 strokeLinecap="round"/>
         </svg>
       </button>
@@ -103,24 +103,13 @@ function HostHeader({ title, onBack, onClose, scrolled = false }) {
   );
 }
 
-const iconBtn = (visible, dark = false) => ({
-  width: 34, height: 34, borderRadius: 17,
+const iconBtn = (visible) => ({
+  width: 32, height: 32, borderRadius: 16,
   display: 'grid', placeItems: 'center',
-  border: dark
-    ? '0.5px solid rgba(255,255,255,0.20)'
-    : '0.5px solid rgba(255,255,255,0.75)',
-  background: dark
-    ? 'linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06))'
-    : 'linear-gradient(180deg, rgba(255,255,255,0.72), rgba(255,255,255,0.32))',
-  backdropFilter: 'blur(14px) saturate(190%)',
-  WebkitBackdropFilter: 'blur(14px) saturate(190%)',
-  cursor: 'pointer',
-  color: 'var(--tg-text)',
-  boxShadow: dark
-    ? 'inset 0 0.5px 0 rgba(255,255,255,0.28), 0 1px 4px rgba(0,0,0,0.35)'
-    : 'inset 0 0.5px 0 rgba(255,255,255,0.95), 0 1px 3px rgba(15,17,20,0.12)',
+  border: 0, background: 'transparent', cursor: 'pointer',
+  color: 'var(--tg-hint)',
   opacity: visible ? 1 : 0, pointerEvents: visible ? 'auto' : 'none',
-  transition: 'opacity 200ms ease, background 200ms ease, transform 120ms ease',
+  transition: 'opacity 200ms ease, background 200ms ease',
 });
 
 // ─── MainButton ─────────────────────────────────────────────────────────
