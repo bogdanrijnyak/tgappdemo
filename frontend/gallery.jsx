@@ -1,11 +1,20 @@
 // gallery.jsx — Feature Gallery (home).
 // Header greeting + progress chip + chip scroller + 12 category sections.
 
-function Gallery({ userName, progress, isPremium, onOpen, onScroll }) {
+function Gallery({ userName, progress, isPremium, onOpen, onScroll, initialScrollTop = 0 }) {
   const [activeChip, setActiveChip] = React.useState('all');
   const tap = useHaptic();
   const sectionRefs = React.useRef({});
   const scrollerRef = React.useRef(null);
+
+  // Restore scroll on mount. ScrollerBinder is a child of this component, so
+  // its useEffect runs before ours — scrollerRef is already bound by here.
+  React.useEffect(() => {
+    if (!initialScrollTop) return;
+    const el = scrollerRef.current;
+    if (el && typeof el.scrollTop === 'number') el.scrollTop = initialScrollTop;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const chips = [{ id: 'all', title: 'All' }, ...CATEGORIES.map((c) => ({ id: c.id, title: c.title.split(' ')[0] }))];
 

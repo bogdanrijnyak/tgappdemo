@@ -584,30 +584,41 @@ function CompassDemo() {
   const tap = useHaptic();
   const [heading, setHeading] = React.useState(0);
   const [running, setRunning] = React.useState(true);
+  const [live, setLive] = React.useState(false);
+  // iOS Safari (and Telegram on iOS) require DeviceOrientationEvent.requestPermission()
+  // to be invoked from a user gesture — the previous useEffect-time call was
+  // silently denied, which is why the compass never reacted to tilt.
+  const needsGesture = typeof DeviceOrientationEvent !== 'undefined' &&
+                       typeof DeviceOrientationEvent.requestPermission === 'function';
+
   React.useEffect(() => {
     if (!running) return undefined;
     const id = setInterval(() => setHeading((h) => (h + 1.5) % 360), 60);
     return () => clearInterval(id);
   }, [running]);
+
   React.useEffect(() => {
-    let canceled = false;
+    // Wait until we either have permission (iOS) or we know none is needed.
+    if (needsGesture && !live) return undefined;
     const onOrient = (e) => {
-      if (canceled) return;
       const a = (typeof e.webkitCompassHeading === 'number' ? e.webkitCompassHeading : e.alpha);
-      if (a != null) { setRunning(false); setHeading(a); }
+      if (a != null) { setRunning(false); setLive(true); setHeading(a); }
     };
-    const attach = () => window.addEventListener('deviceorientation', onOrient);
-    // iOS Safari requires permission for DeviceOrientationEvent.
-    if (typeof DeviceOrientationEvent !== 'undefined' &&
-        typeof DeviceOrientationEvent.requestPermission === 'function') {
-      DeviceOrientationEvent.requestPermission().then((s) => {
-        if (s === 'granted' && !canceled) attach();
-      }).catch(() => {});
-    } else {
-      attach();
+    window.addEventListener('deviceorientation', onOrient);
+    return () => window.removeEventListener('deviceorientation', onOrient);
+  }, [needsGesture, live]);
+
+  const enableLive = async (e) => {
+    tap('soft', e);
+    if (needsGesture) {
+      try {
+        const s = await DeviceOrientationEvent.requestPermission();
+        if (s !== 'granted') return;
+      } catch (_) { return; }
     }
-    return () => { canceled = true; window.removeEventListener('deviceorientation', onOrient); };
-  }, []);
+    setLive(true);
+  };
+
   const dir = ['N','NE','E','SE','S','SW','W','NW'][Math.round(heading / 45) % 8];
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>
@@ -671,6 +682,15 @@ function CompassDemo() {
         <StatChip2 label="Heading" value={`${Math.round(heading)}°`}/>
         <StatChip2 label="Direction" value={dir}/>
       </div>
+
+      <PressCard haptic="selection" onPress={enableLive}
+        style={{
+          marginTop: 10, height: 40, borderRadius: 11,
+          background: live ? 'var(--tg-accent)' : 'var(--tg-secondary-bg)',
+          color: live ? 'var(--tg-button-text)' : 'var(--tg-text)',
+          display: 'grid', placeItems: 'center',
+          fontFamily: '-apple-system, system-ui', fontSize: 13, fontWeight: 600,
+        }}>{live ? 'Live tilt on' : 'Use real tilt'}</PressCard>
     </div>
   );
 }
@@ -698,35 +718,46 @@ function StatChip2({ label, value }) {
 
 // ─── 9. Horizon — pitch & roll ──────────────────────────────────────────
 function HorizonDemo() {
+  const tap = useHaptic();
   const [pitch, setPitch] = React.useState(8);
   const [roll, setRoll] = React.useState(-4);
   const [live, setLive] = React.useState(false);
+  // Same iOS-permission gotcha as the compass demo — the request has to
+  // ride a user gesture or it gets silently denied.
+  const needsGesture = typeof DeviceOrientationEvent !== 'undefined' &&
+                       typeof DeviceOrientationEvent.requestPermission === 'function';
+
   React.useEffect(() => {
     if (live) return undefined;
-    let t = 0; const id = setInterval(() => { t += 0.05; setPitch(Math.sin(t) * 22); setRoll(Math.cos(t * 0.7) * 14); }, 50);
+    let t = 0;
+    const id = setInterval(() => { t += 0.05; setPitch(Math.sin(t) * 22); setRoll(Math.cos(t * 0.7) * 14); }, 50);
     return () => clearInterval(id);
   }, [live]);
+
   React.useEffect(() => {
-    let canceled = false;
+    if (needsGesture && !live) return undefined;
     const onOrient = (e) => {
-      if (canceled) return;
       if (e.beta != null && e.gamma != null) {
         setLive(true);
         setPitch(e.beta);
         setRoll(e.gamma);
       }
     };
-    const attach = () => window.addEventListener('deviceorientation', onOrient);
-    if (typeof DeviceOrientationEvent !== 'undefined' &&
-        typeof DeviceOrientationEvent.requestPermission === 'function') {
-      DeviceOrientationEvent.requestPermission().then((s) => {
-        if (s === 'granted' && !canceled) attach();
-      }).catch(() => {});
-    } else {
-      attach();
+    window.addEventListener('deviceorientation', onOrient);
+    return () => window.removeEventListener('deviceorientation', onOrient);
+  }, [needsGesture, live]);
+
+  const enableLive = async (e) => {
+    tap('soft', e);
+    if (needsGesture) {
+      try {
+        const s = await DeviceOrientationEvent.requestPermission();
+        if (s !== 'granted') return;
+      } catch (_) { return; }
     }
-    return () => { canceled = true; window.removeEventListener('deviceorientation', onOrient); };
-  }, []);
+    setLive(true);
+  };
+
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>
       <div style={{
@@ -779,6 +810,15 @@ function HorizonDemo() {
         <StatChip2 label="Pitch" value={`${Math.round(pitch)}°`}/>
         <StatChip2 label="Roll"  value={`${Math.round(roll)}°`}/>
       </div>
+
+      <PressCard haptic="selection" onPress={enableLive}
+        style={{
+          marginTop: 10, height: 40, borderRadius: 11,
+          background: live ? 'var(--tg-accent)' : 'var(--tg-secondary-bg)',
+          color: live ? 'var(--tg-button-text)' : 'var(--tg-text)',
+          display: 'grid', placeItems: 'center',
+          fontFamily: '-apple-system, system-ui', fontSize: 13, fontWeight: 600,
+        }}>{live ? 'Live tilt on' : 'Use real tilt'}</PressCard>
     </div>
   );
 }

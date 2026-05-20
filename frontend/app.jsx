@@ -23,6 +23,9 @@ function App() {
   const [progress, setProgress] = React.useState(t.progress);
   const [scrolled, setScrolled] = React.useState(false);
   const completedRef = React.useRef(new Set());
+  // Remember the gallery scroll position so coming back from a demo lands
+  // the user exactly where they were instead of snapping to the top.
+  const galleryScrollRef = React.useRef(0);
 
   // Apply theme + accent override every render.
   React.useEffect(() => {
@@ -162,7 +165,8 @@ function App() {
         {route === 'gallery' && (
           <Gallery userName={t.userName} progress={progress}
                    isPremium={t.isPremium} onOpen={openCard}
-                   onScroll={(top) => setScrolled(top > 6)}/>
+                   initialScrollTop={transitionDir === 'back' ? galleryScrollRef.current : 0}
+                   onScroll={(top) => { setScrolled(top > 6); galleryScrollRef.current = top; }}/>
         )}
         {typeof route === 'object' && route.kind === 'demo' && (
           <MiniAppSurface padTop={98} padBottom={96}>
