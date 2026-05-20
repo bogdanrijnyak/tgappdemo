@@ -9,23 +9,32 @@
 const HapticContext = React.createContext(() => {});
 const useHaptic = () => React.useContext(HapticContext);
 
-function HapticProvider({ children, showLabels = true, soundOn = false }) {
-  const [ripples, setRipples] = React.useState([]);
-  const seqRef = React.useRef(0);
+// Map our internal kinds to the Telegram WebApp.HapticFeedback API.
+const TG_IMPACT_STYLES = new Set(['light', 'medium', 'heavy', 'rigid', 'soft']);
+const TG_NOTIFICATION_TYPES = new Set(['error', 'success', 'warning']);
 
-  const fire = React.useCallback((kind, eOrPos) => {
+function fireTelegramHaptic(kind) {
+  const tg = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback;
+  if (!tg) return false;
+  try {
+    if (kind === 'selection') { tg.selectionChanged(); return true; }
+    if (TG_NOTIFICATION_TYPES.has(kind)) { tg.notificationOccurred(kind); return true; }
+    if (TG_IMPACT_STYLES.has(kind)) { tg.impactOccurred(kind); return true; }
+    tg.impactOccurred('light');
+    return true;
+  } catch (e) { return false; }
+}
+
+function HapticProvider({ children, soundOn = false }) {
+  const fire = React.useCallback((kind /*, eOrPos */) => {
     const h = HAPTICS[kind] || HAPTICS.light;
-    let x = window.innerWidth / 2, y = window.innerHeight / 2;
-    if (eOrPos) {
-      if (typeof eOrPos.clientX === 'number') { x = eOrPos.clientX; y = eOrPos.clientY; }
-      else if (typeof eOrPos.x === 'number')  { x = eOrPos.x; y = eOrPos.y; }
+    // Prefer real Telegram haptics when the SDK is present (iOS / Android client).
+    const tgFired = fireTelegramHaptic(kind);
+    // Fallback for desktop / browser preview: Web Vibration API.
+    if (!tgFired) {
+      try { navigator.vibrate && navigator.vibrate(h.ms); } catch (e) { /* noop */ }
     }
-    const id = ++seqRef.current;
-    setRipples((r) => [...r, { id, kind, x, y, hue: h.color, pulse: h.pulse, label: h.label, showLabel: showLabels }]);
-    setTimeout(() => setRipples((r) => r.filter((p) => p.id !== id)), 850);
-    try { navigator.vibrate && navigator.vibrate(h.ms); } catch (e) { /* noop */ }
     if (soundOn) {
-      // very subtle UI click — disabled by default per brief
       try {
         const ctx = HapticProvider._ac || (HapticProvider._ac = new (window.AudioContext || window.webkitAudioContext)());
         const o = ctx.createOscillator(), g = ctx.createGain();
@@ -36,48 +45,12 @@ function HapticProvider({ children, showLabels = true, soundOn = false }) {
         o.stop(ctx.currentTime + 0.1);
       } catch (e) { /* noop */ }
     }
-  }, [showLabels, soundOn]);
+  }, [soundOn]);
 
   return (
     <HapticContext.Provider value={fire}>
       {children}
-      <RippleOverlay ripples={ripples} />
     </HapticContext.Provider>
-  );
-}
-
-function RippleOverlay({ ripples }) {
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, pointerEvents: 'none',
-      zIndex: 9999, overflow: 'hidden',
-    }}>
-      {ripples.map((r) => (
-        <React.Fragment key={r.id}>
-          <div style={{
-            position: 'absolute', left: r.x, top: r.y,
-            width: 12, height: 12, borderRadius: '50%',
-            transform: 'translate(-50%, -50%)',
-            background: `oklch(0.75 0.18 ${r.hue} / 0.5)`,
-            boxShadow: `0 0 0 1px oklch(0.7 0.18 ${r.hue} / 0.4)`,
-            animation: `tg-ripple ${600 + r.pulse * 100}ms cubic-bezier(.2,.7,.3,1) forwards`,
-          }} />
-          {r.showLabel && (
-            <div style={{
-              position: 'absolute', left: r.x, top: r.y - 16,
-              transform: 'translate(-50%, -100%)',
-              padding: '4px 9px', borderRadius: 999,
-              background: `oklch(0.22 0.05 ${r.hue})`,
-              color: '#fff',
-              fontFamily: '-apple-system, system-ui',
-              fontSize: 11, fontWeight: 600, letterSpacing: 0.2,
-              animation: `tg-label 700ms cubic-bezier(.2,.7,.3,1) forwards`,
-              whiteSpace: 'nowrap',
-            }}>{r.label}</div>
-          )}
-        </React.Fragment>
-      ))}
-    </div>
   );
 }
 
@@ -244,4 +217,5 @@ function PressCard({ haptic = 'selection', onPress, style, children, disabled = 
 
 Object.assign(window, {
   HapticProvider, useHaptic, HostHeader, MainButton, MiniAppSurface, PressCard,
+  fireTelegramHaptic,
 });

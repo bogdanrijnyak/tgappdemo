@@ -860,8 +860,33 @@ function BiometricVault() {
   const unlock = async () => {
     setStage('scanning');
     tap('soft', { x: window.innerWidth / 2, y: window.innerHeight / 2 });
+    const tg = window.Telegram && window.Telegram.WebApp;
+    const bm = tg && tg.BiometricManager;
+    if (bm && typeof bm.authenticate === 'function') {
+      const finish = (granted) => {
+        if (granted) {
+          tap('success');
+          loadSecret().finally(() => {
+            setStage('unlocked');
+            setConfetti(true);
+            setTimeout(() => setConfetti(false), 1500);
+          });
+        } else {
+          tap('error');
+          setStage('denied');
+          setTimeout(() => setStage('locked'), 1500);
+        }
+      };
+      try {
+        const ask = () => bm.authenticate({ reason: 'Unlock your demo vault' }, finish);
+        if (bm.isInited) ask(); else bm.init(ask);
+        return;
+      } catch (e) {
+        finish(false);
+        return;
+      }
+    }
     await new Promise((r) => setTimeout(r, 1400));
-    // 92% success
     if (Math.random() < 0.92) {
       tap('success');
       await loadSecret();

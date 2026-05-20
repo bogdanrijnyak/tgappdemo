@@ -16,3 +16,8 @@ frontend_extracted/
 node_modules/
 dist/
 build/
+photo_*.jpg
+photo_*.jpeg
+photo_*.png
+*.zip
+telegram_full_docs.md

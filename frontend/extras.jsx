@@ -103,6 +103,14 @@ function OpenTelegramLinkDemo() {
   const open = (e) => {
     tap('soft', e);
     setOpening(true); setOpened(null);
+    const tg = window.Telegram && window.Telegram.WebApp;
+    if (tg && typeof tg.openTelegramLink === 'function') {
+      try {
+        tg.openTelegramLink(url.startsWith('http') ? url : `https://${url}`);
+        setOpening(false); setOpened(url); tap('success');
+        return;
+      } catch (err) {}
+    }
     setTimeout(() => { setOpening(false); setOpened(url); tap('success'); }, 700);
   };
   return (
@@ -159,8 +167,18 @@ function OpenTelegramLinkDemo() {
 // ─── External link options — try_instant_view + try_browser dropdown ────
 function BrowserOptionsDemo() {
   const tap = useHaptic();
+  const tg = window.Telegram && window.Telegram.WebApp;
   const [iv, setIv] = React.useState(true);
   const [browser, setBrowser] = React.useState('default');
+  const fire = () => {
+    if (!tg || typeof tg.openLink !== 'function') return;
+    try {
+      tg.openLink('https://example.com', {
+        try_instant_view: iv,
+        try_browser: browser === 'default' ? undefined : browser,
+      });
+    } catch (e) {}
+  };
   const BROWSERS = [
     { id: 'default', label: 'Default', tint: 215 },
     { id: 'chrome',  label: 'Chrome',  tint: 60 },
@@ -214,6 +232,13 @@ function BrowserOptionsDemo() {
   try_instant_view: ${iv},
   try_browser: "${browser}"
 })`}</pre>
+        <PressCard haptic="soft" onPress={(e) => { tap('soft', e); fire(); }}
+          style={{
+            marginTop: 10, padding: '10px 12px', borderRadius: 10,
+            background: 'var(--tg-button)', color: 'var(--tg-button-text)',
+            textAlign: 'center', display: 'block', width: '100%',
+            fontFamily: '-apple-system, system-ui', fontSize: 13, fontWeight: 600,
+          }}>Open example.com</PressCard>
       </div>
     </div>
   );

@@ -8,10 +8,29 @@
 
 // ─── 1. MainButton lab — color / shine / progress ───────────────────────
 function MainButtonLabDemo() {
+  const tg = window.Telegram && window.Telegram.WebApp;
   const [label, setLabel] = React.useState('Continue');
   const [shine, setShine] = React.useState(true);
   const [busy, setBusy] = React.useState(false);
   const [dest, setDest] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!tg || !tg.MainButton) return undefined;
+    const mb = tg.MainButton;
+    try {
+      mb.setParams({
+        text: label || 'Continue',
+        color: dest ? '#ff3b30' : (tg.themeParams && tg.themeParams.button_color) || '#2481cc',
+        text_color: '#ffffff',
+        is_visible: true,
+        is_active: !busy,
+        has_shine_effect: !!shine && !busy,
+      });
+      if (busy) mb.showProgress(false); else mb.hideProgress();
+    } catch (e) {}
+    return () => { try { mb.hide(); mb.hideProgress(); } catch (e) {} };
+  }, [tg, label, shine, busy, dest]);
+
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>
       <div style={{
@@ -85,6 +104,7 @@ function BlToggle({ label, value, onChange }) {
 // ─── 2. SecondaryButton lab — slides between 4 slots ────────────────────
 function SecondaryButtonDemo() {
   const tap = useHaptic();
+  const tg = window.Telegram && window.Telegram.WebApp;
   const [position, setPosition] = React.useState('left');
   const positions = [
     { id: 'top',    label: 'Top' },
@@ -92,6 +112,15 @@ function SecondaryButtonDemo() {
     { id: 'right',  label: 'Right' },
     { id: 'bottom', label: 'Bottom' },
   ];
+  React.useEffect(() => {
+    if (!tg || !tg.MainButton || !tg.SecondaryButton) return undefined;
+    const main = tg.MainButton, sec = tg.SecondaryButton;
+    try {
+      main.setParams({ text: 'Continue', is_visible: true, is_active: true });
+      sec.setParams({ text: 'Cancel', is_visible: true, position });
+    } catch (e) {}
+    return () => { try { main.hide(); sec.hide(); } catch (e) {} };
+  }, [tg, position]);
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>
       <div style={{
@@ -168,7 +197,15 @@ function BlButton({ label, main = false, style = {} }) {
 // ─── 3. Settings sheet — host-level bottom sheet menu ───────────────────
 function SettingsSheetDemo() {
   const tap = useHaptic();
+  const tg = window.Telegram && window.Telegram.WebApp;
   const [open, setOpen] = React.useState(false);
+  React.useEffect(() => {
+    if (!tg || !tg.SettingsButton) return undefined;
+    const sb = tg.SettingsButton;
+    const onClick = () => setOpen(true);
+    try { sb.show && sb.show(); sb.onClick && sb.onClick(onClick); } catch (e) {}
+    return () => { try { sb.offClick && sb.offClick(onClick); sb.hide && sb.hide(); } catch (e) {} };
+  }, [tg]);
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>
       <div style={{
@@ -262,19 +299,45 @@ const blCode = {
   background: 'var(--tg-secondary-bg)',
 };
 
+function rgbToHex(rgb) {
+  const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(rgb || '');
+  if (!m) return '#000000';
+  const toHex = (n) => Number(n).toString(16).padStart(2, '0');
+  return '#' + toHex(m[1]) + toHex(m[2]) + toHex(m[3]);
+}
+
 // ─── 4. Chrome colors — header / bottom bar / background sliders ────────
 function ChromeColorsDemo() {
   const tap = useHaptic();
+  const tg = window.Telegram && window.Telegram.WebApp;
   const [hue, setHue] = React.useState(215);
   const [tint, setTint] = React.useState(50);
   React.useEffect(() => {
-    // briefly preview by overriding header bg color via CSS variables
-    const accent = `oklch(0.62 0.18 ${hue})`;
-    document.documentElement.style.setProperty('--tg-header-bg', `oklch(${0.92 - tint*0.004} 0.04 ${hue})`);
-    document.documentElement.style.setProperty('--tg-bottom-bar-bg', `oklch(${0.94 - tint*0.003} 0.03 ${hue})`);
+    const headerColor = `oklch(${0.92 - tint*0.004} 0.04 ${hue})`;
+    const bgColor = `oklch(${0.94 - tint*0.003} 0.03 ${hue})`;
+    document.documentElement.style.setProperty('--tg-header-bg', headerColor);
+    document.documentElement.style.setProperty('--tg-bottom-bar-bg', bgColor);
+    // Convert OKLCH -> hex for Telegram (approx via computed style).
+    const probe = document.createElement('span');
+    probe.style.color = headerColor;
+    document.body.appendChild(probe);
+    const headerHex = rgbToHex(getComputedStyle(probe).color);
+    probe.style.color = bgColor;
+    const bgHex = rgbToHex(getComputedStyle(probe).color);
+    document.body.removeChild(probe);
+    if (tg) {
+      try { tg.setHeaderColor && tg.setHeaderColor(headerHex); } catch (e) {}
+      try { tg.setBackgroundColor && tg.setBackgroundColor(bgHex); } catch (e) {}
+      try { tg.setBottomBarColor && tg.setBottomBarColor(bgHex); } catch (e) {}
+    }
     return () => {
       document.documentElement.style.removeProperty('--tg-header-bg');
       document.documentElement.style.removeProperty('--tg-bottom-bar-bg');
+      if (tg) {
+        try { tg.setHeaderColor && tg.setHeaderColor('bg_color'); } catch (e) {}
+        try { tg.setBackgroundColor && tg.setBackgroundColor('bg_color'); } catch (e) {}
+        try { tg.setBottomBarColor && tg.setBottomBarColor('bottom_bar_bg_color'); } catch (e) {}
+      }
     };
   }, [hue, tint]);
   return (
@@ -527,9 +590,23 @@ function CompassDemo() {
     return () => clearInterval(id);
   }, [running]);
   React.useEffect(() => {
-    const onOrient = (e) => { if (e.alpha != null) { setRunning(false); setHeading(e.alpha); } };
-    window.addEventListener('deviceorientation', onOrient);
-    return () => window.removeEventListener('deviceorientation', onOrient);
+    let canceled = false;
+    const onOrient = (e) => {
+      if (canceled) return;
+      const a = (typeof e.webkitCompassHeading === 'number' ? e.webkitCompassHeading : e.alpha);
+      if (a != null) { setRunning(false); setHeading(a); }
+    };
+    const attach = () => window.addEventListener('deviceorientation', onOrient);
+    // iOS Safari requires permission for DeviceOrientationEvent.
+    if (typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof DeviceOrientationEvent.requestPermission === 'function') {
+      DeviceOrientationEvent.requestPermission().then((s) => {
+        if (s === 'granted' && !canceled) attach();
+      }).catch(() => {});
+    } else {
+      attach();
+    }
+    return () => { canceled = true; window.removeEventListener('deviceorientation', onOrient); };
   }, []);
   const dir = ['N','NE','E','SE','S','SW','W','NW'][Math.round(heading / 45) % 8];
   return (
@@ -623,9 +700,32 @@ function StatChip2({ label, value }) {
 function HorizonDemo() {
   const [pitch, setPitch] = React.useState(8);
   const [roll, setRoll] = React.useState(-4);
+  const [live, setLive] = React.useState(false);
   React.useEffect(() => {
+    if (live) return undefined;
     let t = 0; const id = setInterval(() => { t += 0.05; setPitch(Math.sin(t) * 22); setRoll(Math.cos(t * 0.7) * 14); }, 50);
     return () => clearInterval(id);
+  }, [live]);
+  React.useEffect(() => {
+    let canceled = false;
+    const onOrient = (e) => {
+      if (canceled) return;
+      if (e.beta != null && e.gamma != null) {
+        setLive(true);
+        setPitch(e.beta);
+        setRoll(e.gamma);
+      }
+    };
+    const attach = () => window.addEventListener('deviceorientation', onOrient);
+    if (typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof DeviceOrientationEvent.requestPermission === 'function') {
+      DeviceOrientationEvent.requestPermission().then((s) => {
+        if (s === 'granted' && !canceled) attach();
+      }).catch(() => {});
+    } else {
+      attach();
+    }
+    return () => { canceled = true; window.removeEventListener('deviceorientation', onOrient); };
   }, []);
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>
@@ -689,15 +789,60 @@ function HorizonDemo() {
 
 function LocationDemo() {
   const tap = useHaptic();
-  const [stage, setStage] = React.useState('idle'); // idle | locating | located
+  const [stage, setStage] = React.useState('idle'); // idle | locating | located | denied
   const [coords, setCoords] = React.useState(null);
-  const get = (e) => {
-    tap('soft', e); setStage('locating');
-    setTimeout(() => {
-      setCoords({ lat: 50.4501, lon: 30.5234, accuracy: 18, speed: 0.0 });
-      setStage('located'); tap('success');
-    }, 1200);
+  const [errorMsg, setErrorMsg] = React.useState(null);
+
+  const handleCoords = (lat, lon, accuracy = null, speed = null) => {
+    setCoords({ lat, lon, accuracy, speed });
+    setStage('located');
+    tap('success');
+    setErrorMsg(null);
   };
+
+  const askBrowserGeo = () => {
+    if (!navigator.geolocation) {
+      setErrorMsg('Geolocation not supported.');
+      setStage('denied'); tap('error');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => handleCoords(pos.coords.latitude, pos.coords.longitude, Math.round(pos.coords.accuracy || 0), pos.coords.speed || 0),
+      (err) => {
+        setErrorMsg(err.message || 'Permission denied');
+        setStage('denied'); tap('error');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    );
+  };
+
+  const get = (e) => {
+    tap('soft', e); setStage('locating'); setErrorMsg(null);
+    const lm = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.LocationManager;
+    if (lm && typeof lm.getLocation === 'function') {
+      const ask = () => lm.getLocation((data) => {
+        if (data && typeof data.latitude === 'number') {
+          handleCoords(data.latitude, data.longitude, Math.round(data.horizontal_accuracy || 0), data.speed || 0);
+        } else {
+          // Telegram refused (permission denied) — fall back to browser geolocation.
+          askBrowserGeo();
+        }
+      });
+      if (lm.isInited) ask(); else lm.init(ask);
+      return;
+    }
+    askBrowserGeo();
+  };
+
+  // Build an OSM embed URL once we have coords.
+  const bbox = coords && (() => {
+    const d = 0.005;
+    return [coords.lon - d, coords.lat - d, coords.lon + d, coords.lat + d].join(',');
+  })();
+  const mapSrc = coords
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${coords.lat},${coords.lon}`
+    : null;
+
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>
       <div style={{
@@ -705,49 +850,44 @@ function LocationDemo() {
         fontSize: 13, color: 'var(--tg-subtitle-text)',
         marginBottom: 14,
       }}><code style={blCode}>LocationManager.getLocation()</code> asks the host
-         once and returns lat/lon + accuracy + (optional) speed. The bot decides
-         if it wants the data continuously.</div>
+         once and returns lat/lon + accuracy. Falls back to <code style={blCode}>navigator.geolocation</code> when the Telegram API isn't available.</div>
 
       <div style={{
-        height: 240, borderRadius: 16, overflow: 'hidden', position: 'relative',
+        height: 260, borderRadius: 16, overflow: 'hidden', position: 'relative',
         background: 'linear-gradient(140deg, oklch(0.88 0.05 200) 0%, oklch(0.78 0.07 165) 100%)',
         marginBottom: 14,
+        border: '0.5px solid var(--tg-card-border)',
       }}>
-        {/* streets */}
-        <svg width="100%" height="100%" viewBox="0 0 320 240" preserveAspectRatio="none"
-             style={{ position: 'absolute', inset: 0 }}>
-          <path d="M-10 60 L180 80 L340 75" stroke="rgba(255,255,255,0.5)" strokeWidth={5} fill="none"/>
-          <path d="M-10 140 L340 130" stroke="rgba(255,255,255,0.4)" strokeWidth={3} fill="none"/>
-          <path d="M50 -10 L70 250" stroke="rgba(255,255,255,0.45)" strokeWidth={3} fill="none"/>
-          <path d="M230 -10 L240 250" stroke="rgba(255,255,255,0.35)" strokeWidth={2} fill="none"/>
-        </svg>
-        {/* pin or pulse */}
-        {stage === 'idle' ? (
+        {mapSrc ? (
+          <iframe
+            title="Your location"
+            src={mapSrc}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            style={{ width: '100%', height: '100%', border: 0 }}
+          />
+        ) : stage === 'locating' ? (
           <div style={{
             position: 'absolute', inset: 0,
             display: 'grid', placeItems: 'center',
-            fontFamily: '-apple-system, system-ui',
-            fontSize: 13, color: 'rgba(0,0,0,0.6)', fontWeight: 600,
-          }}>Tap "Locate me" to drop a pin.</div>
+          }}>
+            <div style={{
+              width: 60, height: 60, borderRadius: '50%',
+              border: '3px solid rgba(232,92,111,0.5)',
+              animation: 'tg-ripple 1.4s infinite',
+            }}/>
+          </div>
         ) : (
           <div style={{
-            position: 'absolute', left: '50%', top: '52%',
-            transform: 'translate(-50%, -100%)',
-            animation: stage === 'locating' ? 'tg-pop 600ms infinite alternate' : 'tg-pop 320ms cubic-bezier(.2,1.6,.3,1)',
+            position: 'absolute', inset: 0,
+            display: 'grid', placeItems: 'center',
+            padding: 16, textAlign: 'center',
+            fontFamily: '-apple-system, system-ui',
+            fontSize: 13, color: stage === 'denied' ? 'oklch(0.45 0.15 25)' : 'rgba(0,0,0,0.6)', fontWeight: 600,
           }}>
-            {stage === 'locating' ? (
-              <div style={{
-                width: 60, height: 60, borderRadius: '50%',
-                border: '3px solid rgba(232,92,111,0.5)',
-                animation: 'tg-ripple 1.4s infinite',
-              }}/>
-            ) : (
-              <svg width="34" height="42" viewBox="0 0 34 42">
-                <path d="M17 2 C8 2 3 10 3 16 C3 26 17 40 17 40 C17 40 31 26 31 16 C31 10 26 2 17 2 z"
-                      fill="oklch(0.62 0.2 25)"/>
-                <circle cx={17} cy={16} r={5} fill="#fff"/>
-              </svg>
-            )}
+            {stage === 'denied'
+              ? (errorMsg ? `Couldn't get location: ${errorMsg}` : "Permission denied. Enable location in settings.")
+              : 'Tap "Locate me" to drop a pin on a real map.'}
           </div>
         )}
         {coords && (
@@ -757,7 +897,8 @@ function LocationDemo() {
             background: 'rgba(255,255,255,0.92)',
             fontFamily: 'ui-monospace, "SF Mono", monospace',
             fontSize: 10, fontWeight: 700, color: '#23130b',
-          }}>{coords.lat.toFixed(4)}° N · {coords.lon.toFixed(4)}° E · ±{coords.accuracy} m</div>
+            pointerEvents: 'none',
+          }}>{coords.lat.toFixed(4)}° · {coords.lon.toFixed(4)}°{coords.accuracy ? ` · ±${coords.accuracy} m` : ''}</div>
         )}
       </div>
 

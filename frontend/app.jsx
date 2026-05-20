@@ -10,7 +10,8 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   "showHapticLabels": true,
   "desktopFallback": false,
   "progress": 3,
-  "eventLog": false
+  "eventLog": false,
+  "frame": "auto"
 }/*EDITMODE-END*/;
 
 const ACCENT_PRESETS = ['#2481cc', '#0a84ff', '#7a5af8', '#e85c6f', '#1f8a5b'];
@@ -70,61 +71,86 @@ function App() {
   const showBack = typeof route === 'object' && (route.kind === 'demo' || route.kind === 'stub');
   const closeOk = () => { /* would close the Mini App in real life — no-op here */ };
 
+  // Decide whether to wrap the Mini App in an iOS-frame mock (desktop preview)
+  // or render it directly into the viewport (real Telegram client + narrow
+  // browser windows). Auto-detects unless overridden via the Tweaks panel.
+  const [vw, setVw] = React.useState(window.innerWidth);
+  React.useEffect(() => {
+    const r = () => setVw(window.innerWidth);
+    window.addEventListener('resize', r);
+    return () => window.removeEventListener('resize', r);
+  }, []);
+  const useFrame = (
+    t.frame === 'phone' ? true :
+    t.frame === 'fullscreen' ? false :
+    // auto: skip the mock when running inside Telegram or on a narrow viewport.
+    (vw > 540 && !(window.Telegram && window.Telegram.WebApp))
+  );
+
+  const shellContent = (
+    <React.Fragment>
+      <div style={{ position: 'absolute', inset: 0, background: 'var(--tg-header-bg)' }}/>
+      <HostHeader
+        title={headerTitle}
+        onBack={showBack ? backToGallery : null}
+        onClose={closeOk}
+        scrolled={scrolled && route !== 'onboarding'}
+      />
+
+      <View routeKey={routeKey(route)} dir={transitionDir}>
+        {route === 'onboarding' && (
+          <Onboarding userName={t.userName} motionDensity={t.motionDensity}
+                      onDone={() => { setTransitionDir('forward'); setRoute('gallery'); }}/>
+        )}
+        {route === 'gallery' && (
+          <Gallery userName={t.userName} progress={progress}
+                   isPremium={t.isPremium} onOpen={openCard}
+                   onScroll={(top) => setScrolled(top > 6)}/>
+        )}
+        {typeof route === 'object' && route.kind === 'demo' && (
+          <MiniAppSurface padTop={98} padBottom={96}>
+            <DemoBody demoId={route.demoId} card={route.card}/>
+            <PremiumGate
+              visible={!!route.card.premium && !t.isPremium}
+              title={route.card.title}
+              reason={`${route.card.title} is part of Telegram Premium. Activate Premium to enable this and a few hundred other touches.`}
+              onUnlock={() => setTweak('isPremium', true)}
+            />
+          </MiniAppSurface>
+        )}
+        {typeof route === 'object' && route.kind === 'stub' && (
+          <MiniAppSurface padTop={98} padBottom={96}>
+            <StubDemo card={route.card} hue={hueFor(route.card.id)} onBackToGallery={backToGallery}/>
+            <PremiumGate
+              visible={!!route.card.premium && !t.isPremium}
+              title={route.card.title}
+              reason={`${route.card.title} is part of Telegram Premium. Activate Premium to enable this and a few hundred other touches.`}
+              onUnlock={() => setTweak('isPremium', true)}
+            />
+          </MiniAppSurface>
+        )}
+      </View>
+
+      {t.desktopFallback && (
+        <DesktopOverlay onDismiss={() => setTweak('desktopFallback', false)}/>
+      )}
+      <EventLog visible={t.eventLog}/>
+    </React.Fragment>
+  );
+
   return (
-    <HapticProvider showLabels={t.showHapticLabels} soundOn={t.sound}>
-      <Stage>
-        <IOSDevice dark={dark}>
-          <div style={{
-            position: 'absolute', inset: 0,
-            background: 'var(--tg-header-bg)',
-          }}/>
-          <HostHeader
-            title={headerTitle}
-            onBack={showBack ? backToGallery : null}
-            onClose={closeOk}
-            scrolled={scrolled && route !== 'onboarding'}
-          />
-
-          <View routeKey={routeKey(route)} dir={transitionDir}>
-            {route === 'onboarding' && (
-              <Onboarding userName={t.userName} motionDensity={t.motionDensity}
-                          onDone={() => { setTransitionDir('forward'); setRoute('gallery'); }}/>
-            )}
-            {route === 'gallery' && (
-              <Gallery userName={t.userName} progress={progress}
-                       isPremium={t.isPremium} onOpen={openCard}
-                       onScroll={(top) => setScrolled(top > 6)}/>
-            )}
-            {typeof route === 'object' && route.kind === 'demo' && (
-              <MiniAppSurface padTop={98} padBottom={96}>
-                <DemoBody demoId={route.demoId} card={route.card}/>
-                <PremiumGate
-                  visible={!!route.card.premium && !t.isPremium}
-                  title={route.card.title}
-                  reason={`${route.card.title} is part of Telegram Premium. Activate Premium to enable this and a few hundred other touches.`}
-                  onUnlock={() => setTweak('isPremium', true)}
-                />
-              </MiniAppSurface>
-            )}
-            {typeof route === 'object' && route.kind === 'stub' && (
-              <MiniAppSurface padTop={98} padBottom={96}>
-                <StubDemo card={route.card} hue={hueFor(route.card.id)} onBackToGallery={backToGallery}/>
-                <PremiumGate
-                  visible={!!route.card.premium && !t.isPremium}
-                  title={route.card.title}
-                  reason={`${route.card.title} is part of Telegram Premium. Activate Premium to enable this and a few hundred other touches.`}
-                  onUnlock={() => setTweak('isPremium', true)}
-                />
-              </MiniAppSurface>
-            )}
-          </View>
-
-          {t.desktopFallback && (
-            <DesktopOverlay onDismiss={() => setTweak('desktopFallback', false)}/>
-          )}
-          <EventLog visible={t.eventLog}/>
-        </IOSDevice>
-      </Stage>
+    <HapticProvider soundOn={t.sound}>
+      {useFrame ? (
+        <Stage>
+          <IOSDevice dark={dark}>
+            {shellContent}
+          </IOSDevice>
+        </Stage>
+      ) : (
+        <FullscreenShell dark={dark}>
+          {shellContent}
+        </FullscreenShell>
+      )}
 
       <TweaksPanel title="Showcase tweaks">
         <TweakSection label="Identity"/>
@@ -146,10 +172,13 @@ function App() {
         <TweakRadio label="Motion" value={t.motionDensity}
                     options={['reduced', 'regular', 'lively']}
                     onChange={(v) => setTweak('motionDensity', v)}/>
-        <TweakToggle label="Haptic labels" value={t.showHapticLabels}
-                     onChange={(v) => setTweak('showHapticLabels', v)}/>
         <TweakToggle label="Sound on" value={t.sound}
                      onChange={(v) => setTweak('sound', v)}/>
+
+        <TweakSection label="Preview"/>
+        <TweakRadio label="Device frame" value={t.frame}
+                    options={['auto', 'phone', 'fullscreen']}
+                    onChange={(v) => setTweak('frame', v)}/>
 
         <TweakSection label="State"/>
         <TweakSlider label="Demos explored" value={progress}
@@ -408,6 +437,23 @@ function Stage({ children }) {
         transform: `scale(${scale})`, transformOrigin: 'center',
       }}>{children}</div>
     </div>
+  );
+}
+
+// Fullscreen shell — used when running inside real Telegram (or any narrow
+// viewport). Skips the iOS-frame mock and lets the Mini App content fill
+// 100vw × 100vh. Behavior is otherwise identical to IOSDevice's positioned
+// container — HostHeader and MiniAppSurface still rely on absolute layout.
+function FullscreenShell({ dark, children }) {
+  return (
+    <div style={{
+      position: 'fixed', inset: 0,
+      background: 'var(--tg-bg)',
+      color: 'var(--tg-text)',
+      overflow: 'hidden',
+      WebkitFontSmoothing: 'antialiased',
+      fontFamily: '-apple-system, system-ui, sans-serif',
+    }}>{children}</div>
   );
 }
 

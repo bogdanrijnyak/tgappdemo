@@ -348,9 +348,17 @@ function HideKeyboardDemo() {
 // ─── 4. Closing confirmation demo ────────────────────────────────────────
 function ClosingConfirmDemo() {
   const tap = useHaptic();
+  const tg = window.Telegram && window.Telegram.WebApp;
   const [warn, setWarn] = React.useState(true);
   const [edited, setEdited] = React.useState(false);
   const [showDialog, setShowDialog] = React.useState(false);
+  React.useEffect(() => {
+    if (!tg) return;
+    try {
+      if (warn) tg.enableClosingConfirmation && tg.enableClosingConfirmation();
+      else tg.disableClosingConfirmation && tg.disableClosingConfirmation();
+    } catch (e) {}
+  }, [warn, tg]);
   const tryClose = (e) => {
     tap('soft', e);
     if (warn && edited) setShowDialog(true);
@@ -486,8 +494,29 @@ function HomeScreenDemo() {
   };
   const cur = STATES[state];
 
+  const tg = window.Telegram && window.Telegram.WebApp;
+  React.useEffect(() => {
+    if (!tg || typeof tg.onEvent !== 'function') return;
+    const sync = (e) => {
+      if (e && e.status) setState(e.status === 'added' ? 'added' : e.status === 'missed' ? 'missed' : e.status);
+    };
+    tg.onEvent('homeScreenChecked', sync);
+    tg.onEvent('homeScreenAdded', () => setState('added'));
+    tg.onEvent('homeScreenFailed', () => setState('failed'));
+    if (typeof tg.checkHomeScreenStatus === 'function') {
+      try { tg.checkHomeScreenStatus((status) => sync({ status })); } catch (e) {}
+    }
+    return () => {
+      tg.offEvent && tg.offEvent('homeScreenChecked', sync);
+    };
+  }, [tg]);
+
   const press = (e) => {
     tap(state === 'failed' ? 'warning' : 'soft', e);
+    if (tg && typeof tg.addToHomeScreen === 'function' && state === 'missed') {
+      try { tg.addToHomeScreen(); } catch (err) {}
+      return;
+    }
     if (state === 'missed') setState('added');
     else if (state === 'failed') setState('missed');
     else if (state === 'added') setState('missed');

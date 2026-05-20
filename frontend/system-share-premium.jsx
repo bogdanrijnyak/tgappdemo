@@ -9,10 +9,30 @@
 // ─── 1. QR scanner — native camera scanner with animated reticle ────────
 function QRScannerDemo() {
   const tap = useHaptic();
+  const tg = window.Telegram && window.Telegram.WebApp;
   const [stage, setStage] = React.useState('idle'); // idle | scanning | found
   const [scanned, setScanned] = React.useState(null);
+  React.useEffect(() => {
+    if (!tg || typeof tg.onEvent !== 'function') return;
+    const onQr = (e) => {
+      const text = (e && e.data) || '';
+      if (!text) return;
+      setScanned(text); setStage('found'); tap('success');
+      try { tg.closeScanQrPopup && tg.closeScanQrPopup(); } catch (err) {}
+    };
+    tg.onEvent('qrTextReceived', onQr);
+    return () => tg.offEvent && tg.offEvent('qrTextReceived', onQr);
+  }, [tg, tap]);
   const scan = (e) => {
     tap('soft', e); setStage('scanning'); setScanned(null);
+    if (tg && typeof tg.showScanQrPopup === 'function') {
+      try {
+        tg.showScanQrPopup({ text: 'Point at any QR code' });
+      } catch (err) {
+        setStage('idle');
+      }
+      return;
+    }
     setTimeout(() => { setScanned('t.me/durov?startapp=hi'); setStage('found'); tap('success'); }, 1800);
   };
   return (
@@ -111,8 +131,15 @@ function QRScannerDemo() {
 // ─── 2. Clipboard — read with mask reveal ───────────────────────────────
 function ClipboardDemo() {
   const tap = useHaptic();
+  const tg = window.Telegram && window.Telegram.WebApp;
   const [revealed, setRevealed] = React.useState(false);
-  const value = 'sk_live_71fA8df9-c0Ac-4f3b-b1c4-e10ffe11d402';
+  const [value, setValue] = React.useState('sk_live_71fA8df9-c0Ac-4f3b-b1c4-e10ffe11d402');
+  React.useEffect(() => {
+    if (!tg || typeof tg.readTextFromClipboard !== 'function') return;
+    try {
+      tg.readTextFromClipboard((text) => { if (text) setValue(text); });
+    } catch (e) {}
+  }, [tg]);
   const masked = value.replace(/[a-zA-Z0-9]/g, (c, i) => i < 8 || i > value.length - 4 ? c : '•');
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>
@@ -179,9 +206,19 @@ const sspPaneHeader = {
 // ─── 3. Write access — bot can DM you ───────────────────────────────────
 function WriteAccessDemo() {
   const tap = useHaptic();
+  const tg = window.Telegram && window.Telegram.WebApp;
   const [stage, setStage] = React.useState('idle'); // idle | asking | granted | denied
   const ask = (decision) => (e) => {
     tap('soft', e); setStage('asking');
+    if (tg && typeof tg.requestWriteAccess === 'function') {
+      try {
+        tg.requestWriteAccess((granted) => {
+          setStage(granted ? 'granted' : 'denied');
+          tap(granted ? 'success' : 'warning');
+        });
+        return;
+      } catch (err) {}
+    }
     setTimeout(() => {
       setStage(decision); tap(decision === 'granted' ? 'success' : 'warning');
     }, 700);
@@ -568,9 +605,17 @@ function Slider2({ label, value, min, max, onChange }) {
 // ─── 7. Switch inline — open the bot in any chat ────────────────────────
 function SwitchInlineDemo() {
   const tap = useHaptic();
+  const tg = window.Telegram && window.Telegram.WebApp;
   const [stage, setStage] = React.useState('idle'); // idle | opening | done
   const start = (e) => {
     tap('soft', e); setStage('opening');
+    if (tg && typeof tg.switchInlineQuery === 'function') {
+      try {
+        tg.switchInlineQuery('cosmic-crystal', ['users', 'groups']);
+        setStage('done');
+        return;
+      } catch (err) {}
+    }
     setTimeout(() => { setStage('done'); tap('success'); }, 700);
   };
   return (

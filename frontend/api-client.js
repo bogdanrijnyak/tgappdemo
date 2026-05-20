@@ -128,7 +128,13 @@
   async function init() {
     try {
       const tg = window.Telegram && window.Telegram.WebApp;
-      if (tg && typeof tg.ready === 'function') tg.ready();
+      if (tg) {
+        try { tg.ready && tg.ready(); } catch (e) {}
+        try { tg.expand && tg.expand(); } catch (e) {}
+        try { tg.requestFullscreen && tg.requestFullscreen(); } catch (e) {}
+        try { tg.disableVerticalSwipes && tg.disableVerticalSwipes(); } catch (e) {}
+        try { tg.enableClosingConfirmation && tg.enableClosingConfirmation(); } catch (e) {}
+      }
     } catch (e) {}
     try {
       await verify();

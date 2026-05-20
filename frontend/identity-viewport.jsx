@@ -209,14 +209,18 @@ function DynamicThemeDemo() {
 
 // ─── 3. Platform & version — capability chips ───────────────────────────
 function PlatformDemo() {
-  const platform = navigator.platform.includes('Mac') ? 'macos'
-                 : navigator.platform.includes('Win') ? 'windows'
-                 : navigator.platform.includes('Linux') ? 'linux'
-                 : /iPhone|iPad/.test(navigator.userAgent) ? 'ios'
-                 : /Android/.test(navigator.userAgent) ? 'android'
-                 : 'web';
+  const tg = window.Telegram && window.Telegram.WebApp;
+  const tgPlatform = (tg && tg.platform) || null;
+  const tgVersion = (tg && tg.version) || null;
+  const platform = tgPlatform
+    || (navigator.platform.includes('Mac') ? 'macos'
+        : navigator.platform.includes('Win') ? 'windows'
+        : navigator.platform.includes('Linux') ? 'linux'
+        : /iPhone|iPad/.test(navigator.userAgent) ? 'ios'
+        : /Android/.test(navigator.userAgent) ? 'android'
+        : 'web');
   const isMobile = platform === 'ios' || platform === 'android';
-  const isDesktop = ['macos', 'windows', 'linux'].includes(platform);
+  const isDesktop = ['macos', 'windows', 'linux', 'tdesktop'].includes(platform);
   const caps = [
     { name: 'BiometricManager', ok: isMobile },
     { name: 'Accelerometer',    ok: isMobile },
@@ -257,7 +261,7 @@ function PlatformDemo() {
         <div style={{
           fontFamily: 'ui-monospace, "SF Mono", monospace',
           fontSize: 11, opacity: 0.78, marginTop: 4,
-        }}>tg.version = "9.0" · tg.platform = "{platform}"</div>
+        }}>tg.version = "{tgVersion || '—'}" · tg.platform = "{platform}"</div>
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -287,14 +291,25 @@ function PlatformDemo() {
 
 // ─── 4. Viewport meter — live height readout ────────────────────────────
 function ViewportMeterDemo() {
-  const [vh, setVh] = React.useState(window.innerHeight);
+  const tg = window.Telegram && window.Telegram.WebApp;
+  const [vh, setVh] = React.useState((tg && tg.viewportHeight) || window.innerHeight);
   const [stable, setStable] = React.useState(true);
+  const [expanded, setExpanded] = React.useState(tg ? !!tg.isExpanded : true);
   React.useEffect(() => {
+    if (tg && typeof tg.onEvent === 'function') {
+      const onViewport = (e) => {
+        setVh(tg.viewportHeight || window.innerHeight);
+        setStable(typeof e?.isStateStable === 'boolean' ? e.isStateStable : true);
+        setExpanded(!!tg.isExpanded);
+      };
+      tg.onEvent('viewportChanged', onViewport);
+      onViewport({ isStateStable: true });
+      return () => tg.offEvent && tg.offEvent('viewportChanged', onViewport);
+    }
     const onResize = () => { setVh(window.innerHeight); setStable(false); setTimeout(() => setStable(true), 600); };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
-  const expanded = vh > 700;
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>
       <div style={{
@@ -352,7 +367,15 @@ function StatChip({ label, value, ok }) {
 // ─── 5. Vertical swipes — protect accidental close ──────────────────────
 function VerticalSwipesDemo() {
   const tap = useHaptic();
+  const tg = window.Telegram && window.Telegram.WebApp;
   const [enabled, setEnabled] = React.useState(false);
+  React.useEffect(() => {
+    if (!tg) return;
+    try {
+      if (enabled) tg.disableVerticalSwipes && tg.disableVerticalSwipes();
+      else tg.enableVerticalSwipes && tg.enableVerticalSwipes();
+    } catch (e) {}
+  }, [enabled, tg]);
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>
       <div style={{
@@ -432,7 +455,28 @@ function Toggle2({ label, hint, value, onChange }) {
 // ─── 6. Fullscreen — enter / exit ───────────────────────────────────────
 function FullscreenDemo() {
   const tap = useHaptic();
-  const [fs, setFs] = React.useState(false);
+  const tg = window.Telegram && window.Telegram.WebApp;
+  const [fs, setFs] = React.useState(tg ? !!tg.isFullscreen : false);
+  React.useEffect(() => {
+    if (!tg || typeof tg.onEvent !== 'function') return;
+    const sync = () => setFs(!!tg.isFullscreen);
+    tg.onEvent('fullscreenChanged', sync);
+    tg.onEvent('fullscreenFailed', sync);
+    return () => {
+      tg.offEvent && tg.offEvent('fullscreenChanged', sync);
+      tg.offEvent && tg.offEvent('fullscreenFailed', sync);
+    };
+  }, [tg]);
+  const toggle = (e) => {
+    tap('medium', e);
+    if (tg) {
+      try {
+        if (tg.isFullscreen) tg.exitFullscreen && tg.exitFullscreen();
+        else tg.requestFullscreen && tg.requestFullscreen();
+      } catch (err) {}
+    }
+    setFs((f) => !f);
+  };
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>
       <div style={{
@@ -476,15 +520,29 @@ function FullscreenDemo() {
       </div>
 
       <MainButton label={fs ? 'Exit fullscreen' : 'Request fullscreen'}
-        haptic="medium" onClick={(e) => { tap('medium', e); setFs((f) => !f); }}/>
+        haptic="medium" onClick={toggle}/>
     </div>
   );
 }
 
 // ─── 7. Safe Area — inset visualizer ────────────────────────────────────
 function SafeAreaDemo() {
-  // Mock realistic iOS notch insets.
-  const insets = { top: 44, right: 0, bottom: 34, left: 0 };
+  const tg = window.Telegram && window.Telegram.WebApp;
+  const [insets, setInsets] = React.useState(() => {
+    if (tg && tg.contentSafeAreaInset) return { ...tg.contentSafeAreaInset };
+    if (tg && tg.safeAreaInset) return { ...tg.safeAreaInset };
+    return { top: 44, right: 0, bottom: 34, left: 0 };
+  });
+  React.useEffect(() => {
+    if (!tg || typeof tg.onEvent !== 'function') return;
+    const sync = () => setInsets({ ...(tg.contentSafeAreaInset || tg.safeAreaInset || {}) });
+    tg.onEvent('safeAreaChanged', sync);
+    tg.onEvent('contentSafeAreaChanged', sync);
+    return () => {
+      tg.offEvent && tg.offEvent('safeAreaChanged', sync);
+      tg.offEvent && tg.offEvent('contentSafeAreaChanged', sync);
+    };
+  }, [tg]);
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>
       <div style={{
@@ -549,7 +607,16 @@ function SafeAreaDemo() {
 // ─── 8. Lock orientation ─────────────────────────────────────────────────
 function LockOrientationDemo() {
   const tap = useHaptic();
+  const tg = window.Telegram && window.Telegram.WebApp;
   const [locked, setLocked] = React.useState('portrait');
+  React.useEffect(() => {
+    if (!tg) return;
+    try {
+      if (locked === 'any') tg.unlockOrientation && tg.unlockOrientation();
+      else if (typeof tg.lockOrientation === 'function') tg.lockOrientation(locked);
+      else if (screen.orientation && screen.orientation.lock) screen.orientation.lock(locked).catch(() => {});
+    } catch (e) {}
+  }, [locked, tg]);
   return (
     <div style={{ padding: '4px 16px 0', color: 'var(--tg-text)' }}>
       <div style={{
