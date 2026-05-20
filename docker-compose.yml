@@ -98,6 +98,15 @@ services:
       - ./nginx/site.conf:/etc/nginx/conf.d/default.conf:ro
       - ./nginx/letsencrypt:/etc/letsencrypt
       - ./nginx/webroot:/var/www/certbot
+    networks:
+      - default
+      - proxy_web
+
+networks:
+  default:
+  proxy_web:
+    name: proxy_web
+    external: true
 
 volumes:
   pgdata:

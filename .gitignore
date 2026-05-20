@@ -21,3 +21,4 @@ photo_*.jpeg
 photo_*.png
 *.zip
 telegram_full_docs.md
+.claude/
