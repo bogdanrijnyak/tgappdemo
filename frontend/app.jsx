@@ -36,6 +36,22 @@ function App() {
 
   React.useEffect(() => { setProgress(t.progress); }, [t.progress]);
 
+  // Pull the real first name from Telegram's initDataUnsafe so the greeting
+  // says "Hi, Bohdan." instead of the placeholder. Only runs once on mount;
+  // the Tweaks panel can still override it for screenshots/previews.
+  const tgNamePickedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (tgNamePickedRef.current) return;
+    const u = window.Telegram && window.Telegram.WebApp
+      && window.Telegram.WebApp.initDataUnsafe
+      && window.Telegram.WebApp.initDataUnsafe.user;
+    const first = u && (u.first_name || u.firstName);
+    if (first && first !== t.userName) {
+      tgNamePickedRef.current = true;
+      setTweak('userName', first);
+    }
+  }, []);
+
   // Compute device frame dark mode from theme token.
   const dark = (THEMES[t.theme] || THEMES.light)['--tg-mode'] === 'dark';
 
