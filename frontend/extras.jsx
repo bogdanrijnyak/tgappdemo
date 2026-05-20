@@ -297,10 +297,19 @@ function Toggle({ label, hint, value, onChange }) {
 function VoiceToTextDemo() {
   const tap = useHaptic();
   const [stage, setStage] = React.useState('idle'); // idle | playing | transcribing | done
+  // Drive stage transitions from a single effect so timers are properly
+  // cleared on unmount (e.g. user swipes back mid-play). Previously the
+  // play handler chained setTimeout outside any effect and could leak.
   React.useEffect(() => {
-    if (stage !== 'transcribing') return undefined;
-    const id = setTimeout(() => { setStage('done'); tap('success'); }, 1600);
-    return () => clearTimeout(id);
+    if (stage === 'playing') {
+      const id = setTimeout(() => setStage('transcribing'), 900);
+      return () => clearTimeout(id);
+    }
+    if (stage === 'transcribing') {
+      const id = setTimeout(() => { setStage('done'); tap('success'); }, 1600);
+      return () => clearTimeout(id);
+    }
+    return undefined;
   }, [stage, tap]);
   const lines = [
     'Hey — quick voice memo while I walk.',
@@ -322,7 +331,7 @@ function VoiceToTextDemo() {
         color: '#23130b',
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
-        <button onClick={() => { tap('soft'); setStage('playing'); setTimeout(() => setStage('transcribing'), 900); }}
+        <button onClick={() => { tap('soft'); setStage('playing'); }}
           disabled={stage !== 'idle' && stage !== 'done'}
           style={{
             width: 44, height: 44, borderRadius: 22, border: 0,
